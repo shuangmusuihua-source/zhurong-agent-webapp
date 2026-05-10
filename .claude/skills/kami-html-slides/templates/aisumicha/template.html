@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}}</title>
+
+  <!-- 字体 -->
+  <style>
+    @font-face {
+      font-family: 'TsangerJinKai02';
+      src: url('{{FONT_PATH}}fonts/TsangerJinKai02-W04.ttf') format('truetype');
+      font-weight: 400 500;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'ChaoXianRiBaoMingChao';
+      src: url('{{FONT_PATH}}fonts/ChaoXianRiBaoMingChaoTi-2.ttf') format('truetype');
+      font-weight: 400 500;
+      font-style: normal;
+    }
+  </style>
+
+  <!-- 主题样式 -->
+  <style>
+    {{THEME_STYLE}}
+  </style>
+</head>
+<body>
+  <div class="slides-container">
+    {{SLIDES_CONTENT}}
+  </div>
+
+  <script>
+    // 幻灯片导航 {
+      const slides = document.querySelectorAll('.slide');
+      let currentIndex = 0;
+      const totalSlides = slides.length;
+
+      function showSlide(index) {
+        slides.forEach((slide, i) => {
+          slide.classList.remove('active');
+          if (i === index) {
+            slide.classList.add('active');
+          }
+        });
+      }
+
+      // 初始化显示第一页
+      showSlide(0);
+
+      // 点击导航
+      document.querySelector('.slides-container').addEventListener('click', function(e) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const width = rect.width;
+
+        if (clickX > width * 0.6) {
+          // 点击右侧 - 下一页
+          if (currentIndex < totalSlides - 1) {
+            currentIndex++;
+            showSlide(currentIndex);
+          }
+        } else if (clickX < width * 0.4) {
+          // 点击左侧 - 上一页
+          if (currentIndex > 0) {
+            currentIndex--;
+            showSlide(currentIndex);
+          }
+        }
+      });
+
+      // 键盘左右键切换
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          if (currentIndex < totalSlides - 1) {
+            currentIndex++;
+            showSlide(currentIndex);
+          }
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          if (currentIndex > 0) {
+            currentIndex--;
+            showSlide(currentIndex);
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

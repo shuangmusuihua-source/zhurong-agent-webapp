@@ -1,0 +1,387 @@
+/* UROTSURUBAMI 主题样式 - 黒弁柄主题 */
+
+/* 字体定义 */
+@font-face {
+  font-family: 'JunYaRuiSong';
+  src: url('ZaoZiGongFangJunYaRuiSong/ZaoZiGongFangJunYaRuiSong-1.otf') format('opentype');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'ChaoXianMingChao';
+  src: url('fonts/ChaoXianRiBaoMingChaoTi-2.ttf') format('truetype');
+  font-weight: 400;
+}
+
+/* 外部字体 */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
+
+/* CSS 变量 */
+:root {
+  /* 日本传统色 - 黒弁柄主题 */
+  --bg-primary: #544a47;      /* 黒橡 */
+  --bg-secondary: #524e4d;    /* 消炭色 */
+  --bg-card: rgba(89, 84, 85, 0.6);  /* 溝鼠 */
+  --accent: #8f2e14;          /* 弁柄 */
+  --accent-light: #a83d22;    /* 弁柄亮色 */
+  --text-primary: #e8e8e8;    /* 浅色文字 */
+  --text-secondary: #afafb0;  /* 銀鼠 */
+  --text-muted: #9fa0a0;      /* 素鼠 */
+  --border: rgba(175, 175, 176, 0.2);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'ChaoXianMingChao', serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+/* 幻灯片基础样式 */
+.slide {
+  width: 100vw;
+  height: 100vh;
+  padding: 2cm;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 背景纹理 - 纸张质感 */
+.slide::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(143, 46, 20, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(143, 46, 20, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 封面页不显示默认背景纹理 */
+.cover-slide::before,
+.cover-slide::after {
+  display: none;
+}
+
+/* 噪点纹理 */
+.slide::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ========== 封面页样式 ========== */
+.cover-slide {
+  padding: 3cm;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.cover-meta {
+  font-family: 'ChaoXianMingChao', 'Lato', serif;
+  font-size: 0.75rem;
+  color: rgba(159, 160, 160, 0.5);
+  letter-spacing: 0.2em;
+  margin-bottom: 1rem;
+}
+
+.cover-meta .en {
+  font-family: 'Lato', sans-serif;
+  font-weight: 300;
+}
+
+.cover-slide .slide-title {
+  font-family: 'JunYaRuiSong', serif;
+  font-size: 3.5rem;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.5rem;
+  text-align: left;
+  max-width: 70%;
+}
+
+.cover-slide .slide-subtitle {
+  font-family: 'ChaoXianMingChao', serif;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-align: left;
+  line-height: 1.6;
+}
+
+/* 底部信息 - 竖线包裹样式 */
+.cover-footer {
+  position: absolute;
+  bottom: 3cm;
+  left: 3cm;
+  padding-left: 0.8rem;
+  border-left: 1px solid rgba(143, 46, 20, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.cover-author {
+  font-family: 'ChaoXianMingChao', 'Lato', serif;
+  font-size: 0.7rem;
+  color: rgba(159, 160, 160, 0.7);
+  letter-spacing: 0.2em;
+}
+
+.cover-date {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 300;
+  color: rgba(159, 160, 160, 0.6);
+  letter-spacing: 0.15em;
+}
+
+/* ========== 内容页样式 ========== */
+.slide-header {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0.5cm;
+}
+
+.slide-title {
+  font-family: 'JunYaRuiSong', serif;
+  font-size: 2.5rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.05em;
+}
+
+.slide-summary {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+.slide-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.slide-footer {
+  position: absolute;
+  bottom: 0;
+  right: 2cm;
+  padding-bottom: 1cm;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  z-index: 1;
+}
+
+/* ========== 卡片样式 ========== */
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  position: relative;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+/* ========== 数据卡片 ========== */
+.data-card {
+  text-align: center;
+  padding: 2rem;
+}
+
+.data-value {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.2;
+}
+
+.data-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+}
+
+/* ========== 列表样式 ========== */
+.list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.list-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.list-text {
+  color: var(--text-primary);
+}
+
+/* ========== 引用样式 ========== */
+.quote-block {
+  position: relative;
+  padding: 2rem;
+  padding-left: 3rem;
+}
+
+.quote-block::before {
+  content: '"';
+  position: absolute;
+  left: 1rem;
+  top: 0.5rem;
+  font-size: 4rem;
+  color: var(--accent);
+  opacity: 0.5;
+  font-family: serif;
+}
+
+.quote-text {
+  font-size: 1.3rem;
+  font-style: italic;
+  color: var(--text-primary);
+  line-height: 1.8;
+}
+
+.quote-author {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* ========== 时间线 ========== */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.timeline-marker {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 0.3rem;
+}
+
+.timeline-content {
+  flex: 1;
+}
+
+.timeline-date {
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.timeline-title {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-top: 0.3rem;
+}
+
+/* ========== 网格布局 ========== */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1200px;
+}
+
+/* ========== 动画 ========== */
+.animate-in {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========== 水波纹背景 ========== */
+.water-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  z-index: 0;
+  background: #544a47;
+}
+
+.water-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}

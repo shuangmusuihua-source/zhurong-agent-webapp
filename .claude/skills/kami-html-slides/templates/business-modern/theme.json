@@ -1,0 +1,77 @@
+{
+  "id": "business-modern",
+  "name": "商务现代白",
+  "description": "商务现代风格，清新绿色系配色、四色弥散渐变背景、毛玻璃卡片、G2连续曲率圆角(30px)、圆角设计，支持键盘导航，适合现代商务汇报场景",
+  "version": "1.7.7",
+  "colors": {
+    "background": "#ffffff",
+    "primary": "#10B981",
+    "secondary": "#1E293B",
+    "accent": "#34D399",
+    "border": "#E2E8F0",
+    "green": "#10B981",
+    "green-light": "#34D399",
+    "green-dark": "#059669",
+    "teal": "#14B8A6",
+    "lime": "#84CC16",
+    "gradient1": "rgba(16, 185, 129, 0.12)",
+    "gradient2": "rgba(52, 211, 153, 0.10)",
+    "gradient3": "rgba(20, 184, 166, 0.08)",
+    "gradient4": "rgba(132, 204, 22, 0.06)"
+  },
+  "fonts": {
+    "primary": "Alibaba PuHuiTi",
+    "fallback": "-apple-system, BlinkMacSystemFont, sans-serif"
+  },
+  "layout": {
+    "paddingH": "2cm",
+    "paddingV": "1cm",
+    "regionGap": "0.2cm",
+    "regionPadding": "0.1cm"
+  },
+  "typography": {
+    "coverTitle": {
+      "fontSize": "3.5rem",
+      "fontWeight": 700,
+      "lineHeight": 1.2
+    },
+    "title": {
+      "fontSize": "2rem",
+      "fontWeight": 600,
+      "lineHeight": 1.3
+    },
+    "subtitle": {
+      "fontSize": "1.5rem",
+      "fontWeight": 400
+    },
+    "content": {
+      "fontSize": "1.2rem",
+      "lineHeight": 1.8
+    },
+    "summary": {
+      "fontSize": "1rem"
+    },
+    "chartInfo": {
+      "fontSize": "1rem"
+    }
+  },
+  "animation": {
+    "duration": {
+      "fast": "0.3s",
+      "normal": "0.5s",
+      "slow": "0.8s"
+    },
+    "easing": "ease"
+  },
+  "features": {
+    "keyboardNavigation": true,
+    "glassEffect": true,
+    "fixedPageNumber": true,
+    "prettyTextWrap": true
+  },
+  "files": {
+    "style": "style.css",
+    "charts": "charts.js",
+    "template": "template.html"
+  }
+}

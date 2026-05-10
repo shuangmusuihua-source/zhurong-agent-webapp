@@ -1,0 +1,42 @@
+{
+  "name": "ink-classic",
+  "version": "1.0.0",
+  "description": "墨水经典主题 - 电子杂志 × 电子墨水风格",
+  "author": "guizang",
+  "source": "https://github.com/op7418/guizang-ppt-skill",
+  "colors": {
+    "ink": "#0a0a0b",
+    "ink-rgb": "10,10,11",
+    "paper": "#f1efea",
+    "paper-rgb": "241,239,234",
+    "paper-tint": "#e8e5de",
+    "ink-tint": "#18181a"
+  },
+  "fonts": {
+    "serif-zh": "Noto Serif SC",
+    "serif-en": "Playfair Display",
+    "sans-zh": "Noto Sans SC",
+    "mono": "IBM Plex Mono"
+  },
+  "features": {
+    "webglBackground": true,
+    "motionAnimation": true,
+    "horizontalSwipe": true,
+    "heroPages": true,
+    "themeTransition": true
+  },
+  "suitableFor": [
+    "通用分享",
+    "商业发布",
+    "科技产品",
+    "线下分享",
+    "行业内部讲话",
+    "私享会"
+  ],
+  "styleNotes": [
+    "衬线标题 + 非衬线正文 + 等宽元数据",
+    "WebGL 流体背景仅在 hero 页可见",
+    "克制优于炫技，结构优于装饰",
+    "图片是第一公民，只裁底部"
+  ]
+}

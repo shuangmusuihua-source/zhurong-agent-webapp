@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}}</title>
+
+  <!-- 图标字体 -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- 图表库 -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+
+  <!-- 动画库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+  <!-- 字体 -->
+  <style>
+    @font-face {
+      font-family: 'Alibaba PuHuiTi';
+      src: url('{{FONT_PATH}}AlibabaPuHuiTi-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Alibaba PuHuiTi';
+      src: url('{{FONT_PATH}}AlibabaPuHuiTi-Bold.ttf') format('truetype');
+      font-weight: bold;
+      font-style: normal;
+    }
+  </style>
+
+  <!-- 主题样式 -->
+  <style>
+    {{THEME_STYLE}}
+  </style>
+</head>
+<body>
+  <div class="slides-container">
+    {{SLIDES_CONTENT}}
+  </div>
+
+  <script>
+    // 图表配置
+    {{CHART_CONFIG}}
+
+    // 初始化 Lucide 图标
+    lucide.createIcons();
+
+    // 幻灯片导航
+    (function() {
+      const slides = document.querySelectorAll('.slide');
+      let currentIndex = 0;
+      const totalSlides = slides.length;
+
+      // 显示第一页
+      function showSlide(index) {
+        slides.forEach((slide, i) => {
+          slide.classList.remove('active');
+          if (i === index) {
+            slide.classList.add('active');
+            // 触发动画重播
+            const animatedElements = slide.querySelectorAll('.animate__animated');
+            animatedElements.forEach(el => {
+              el.style.animation = 'none';
+              el.offsetHeight; // 触发重排
+              el.style.animation = null;
+            });
+          }
+        });
+      }
+
+      // 初始化显示第一页
+      showSlide(0);
+
+      // 点击导航
+      document.querySelector('.slides-container').addEventListener('click', function(e) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const width = rect.width;
+
+        if (clickX > width * 0.6) {
+          // 点击右侧 - 下一页
+          if (currentIndex < totalSlides - 1) {
+            currentIndex++;
+            showSlide(currentIndex);
+          }
+        } else if (clickX < width * 0.4) {
+          // 点击左侧 - 上一页
+          if (currentIndex > 0) {
+            currentIndex--;
+            showSlide(currentIndex);
+          }
+        }
+      });
+
+      // 数字动画
+      function animateNumber(element, target, duration = 1500) {
+        const start = 0;
+        const startTime = performance.now();
+
+        function update(currentTime) {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const easeProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+          const current = Math.floor(start + (target - start) * easeProgress);
+          element.textContent = current.toLocaleString();
+
+          if (progress < 1) {
+            requestAnimationFrame(update);
+          }
+        }
+
+        requestAnimationFrame(update);
+      }
+
+      // 初始化图表
+      function initCharts() {
+        {{CHART_INIT}}
+      }
+
+      // 页面加载完成后初始化
+      document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+
+        // 初始化数字动画
+        document.querySelectorAll('.data-value[data-target]').forEach(el => {
+          const target = parseFloat(el.dataset.target);
+          animateNumber(el, target);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

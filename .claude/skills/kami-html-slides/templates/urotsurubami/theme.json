@@ -1,0 +1,25 @@
+{
+  "name": "urotsurubami",
+  "version": "1.0.0",
+  "description": "黒弁柄主题 - 暗色纸张质感设计，适合大量文字阅读",
+  "colors": {
+    "bg-primary": "#544a47",
+    "bg-secondary": "#524e4d",
+    "bg-card": "rgba(89, 84, 85, 0.6)",
+    "accent": "#8f2e14",
+    "accent-light": "#a83d22",
+    "text-primary": "#e8e8e8",
+    "text-secondary": "#afafb0",
+    "text-muted": "#9fa0a0",
+    "border": "rgba(175, 175, 176, 0.2)"
+  },
+  "fonts": {
+    "title": "JunYaRuiSong",
+    "body": "ChaoXianMingChao",
+    "en": "Lato"
+  },
+  "layout": {
+    "padding": "3cm",
+    "title-max-width": "70%"
+  }
+}

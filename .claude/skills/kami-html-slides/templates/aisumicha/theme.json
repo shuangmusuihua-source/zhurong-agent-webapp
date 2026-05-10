@@ -1,0 +1,109 @@
+{
+  "id": "aisumicha",
+  "name": "蓝墨茶 AISUMICHA",
+  "description": "基于 Kami 设计系统的纸张质感主题。暖米纸底、油墨蓝点缀(≤5%)、Serif 承担层级、Ring Shadow，适合大量文字分享",
+  "version": "1.3.0",
+  "source": "https://kami.tw93.fun",
+  "colors": {
+    "canvas": {
+      "parchment": "#f5f4ed",
+      "ivory": "#faf9f5",
+      "warmSand": "#e8e6dc",
+      "darkSurface": "#30302e",
+      "deepDark": "#141413"
+    },
+    "brand": {
+      "inkBlue": "#1B365D",
+      "inkLight": "#2D5A8A"
+    },
+    "neutrals": {
+      "nearBlack": "#141413",
+      "darkWarm": "#3d3d3a",
+      "olive": "#504e49",
+      "stone": "#6b6a64"
+    },
+    "borders": {
+      "border": "#e8e6dc",
+      "borderSoft": "#e5e3d8"
+    },
+    "tags": {
+      "tint08": "#EEF2F7",
+      "tint14": "#E4ECF5",
+      "tint18": "#DAE6F2",
+      "tint22": "#D0DCE9",
+      "tint30": "#D6E1EE"
+    }
+  },
+  "fonts": {
+    "serif": "TsangerJinKai02, ChaoXianRiBaoMingChao, Georgia, Source Han Serif SC, Noto Serif CJK SC, Songti SC, serif",
+    "sans": "= serif (一页一字体)",
+    "mono": "JetBrains Mono, Fira Code, SF Mono, Consolas, Monaco, monospace"
+  },
+  "layout": {
+    "paddingV": "1cm",
+    "paddingH": "3cm"
+  },
+  "typography": {
+    "coverTitle": {
+      "fontSize": "4rem",
+      "fontWeight": 500,
+      "lineHeight": 1.05,
+      "fontFamily": "serif"
+    },
+    "coverSubtitle": {
+      "fontSize": "1.25rem",
+      "fontWeight": 400,
+      "lineHeight": 1.45,
+      "fontFamily": "serif"
+    },
+    "sectionTitle": {
+      "fontSize": "2rem",
+      "fontWeight": 500,
+      "lineHeight": 1.2,
+      "fontFamily": "serif"
+    },
+    "contentBody": {
+      "fontSize": "1rem",
+      "fontWeight": 400,
+      "lineHeight": 1.8,
+      "fontFamily": "serif"
+    },
+    "pageNumber": {
+      "fontSize": "0.85rem"
+    }
+  },
+  "lineHeight": {
+    "tight": "1.2",
+    "dense": "1.45",
+    "read": "1.55"
+  },
+  "effects": {
+    "paperTexture": true,
+    "ringShadow": true,
+    "noDropShadow": true,
+    "noRgbaTags": true
+  },
+  "designRules": [
+    "页面背景 parchment #f5f4ed，不用纯白",
+    "强调色只有油墨蓝 #1B365D，不引入第二种彩色",
+    "所有灰色暖调 (yellow-brown undertone)，禁止冷蓝灰",
+    "英文 serif 通吃标题和正文，中文标题用 serif、正文用 sans",
+    "Serif 正文 400，标题 500，不用合成 bold",
+    "行距三档：紧凑标题 1.1–1.3 / 密排 1.4–1.45 / 阅读 1.5–1.55",
+    "Tag 背景必须实色 hex，禁止 rgba",
+    "阴影只用 ring 或 whisper shadow，不用硬 drop shadow"
+  ],
+  "animation": {
+    "duration": "0.4s",
+    "easing": "ease-out"
+  },
+  "features": {
+    "keyboardNavigation": true,
+    "clickNavigation": true,
+    "fixedPageNumber": true
+  },
+  "files": {
+    "style": "style.css",
+    "template": "template.html"
+  }
+}

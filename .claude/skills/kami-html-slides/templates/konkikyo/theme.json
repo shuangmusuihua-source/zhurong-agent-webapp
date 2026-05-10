@@ -1,0 +1,110 @@
+{
+  "id": "konkikyo",
+  "name": "紺桔梗 KONKIKYO",
+  "description": "基于 Kami 设计系统的暗色纸张质感主题。深墨底色、紺桔梗点缀、朝鲜日报明朝体，适合夜间阅读与大量文字分享",
+  "version": "1.0.0",
+  "source": "https://kami.tw93.fun",
+  "colors": {
+    "canvas": {
+      "deepInk": "#141413",
+      "darkPaper": "#1a1a18",
+      "warmDark": "#222220",
+      "cardDark": "#2a2a28",
+      "borderDark": "#3a3a38"
+    },
+    "brand": {
+      "konkikyo": "#B481BB",
+      "konkikyoLight": "#C9A0CF",
+      "konkikyoDim": "#8A6A90"
+    },
+    "neutrals": {
+      "nearWhite": "#f5f4ed",
+      "warmLight": "#d4d2c8",
+      "stoneLight": "#a8a69c",
+      "mutedGray": "#6b6a64"
+    },
+    "borders": {
+      "border": "#3a3a38",
+      "borderSoft": "#333331"
+    },
+    "tags": {
+      "tint08": "#2D2830",
+      "tint14": "#3A3340",
+      "tint18": "#4A3D50",
+      "tint22": "#5A4D60",
+      "tint30": "#6A5D70"
+    }
+  },
+  "fonts": {
+    "serif": "ChaoXianRiBaoMingChao, Georgia, 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', serif",
+    "sans": "ChaoXianRiBaoMingChao, Georgia, 'Source Han Serif SC', 'Noto Serif CJK SC', serif",
+    "mono": "JetBrains Mono, Fira Code, SF Mono, Consolas, Monaco, monospace"
+  },
+  "layout": {
+    "paddingV": "1cm",
+    "paddingH": "3cm"
+  },
+  "typography": {
+    "coverTitle": {
+      "fontSize": "4rem",
+      "fontWeight": 500,
+      "lineHeight": 1.05,
+      "fontFamily": "serif"
+    },
+    "coverSubtitle": {
+      "fontSize": "1.25rem",
+      "fontWeight": 400,
+      "lineHeight": 1.45,
+      "fontFamily": "serif"
+    },
+    "sectionTitle": {
+      "fontSize": "2rem",
+      "fontWeight": 500,
+      "lineHeight": 1.2,
+      "fontFamily": "serif"
+    },
+    "contentBody": {
+      "fontSize": "1rem",
+      "fontWeight": 400,
+      "lineHeight": 1.8,
+      "fontFamily": "serif"
+    },
+    "pageNumber": {
+      "fontSize": "0.85rem"
+    }
+  },
+  "lineHeight": {
+    "tight": "1.2",
+    "dense": "1.45",
+    "read": "1.55"
+  },
+  "effects": {
+    "paperTexture": true,
+    "ringShadow": true,
+    "noDropShadow": true,
+    "noRgbaTags": true
+  },
+  "designRules": [
+    "页面背景 deepInk #141413，深墨底色",
+    "强调色只有紺桔梗 #B481BB，不引入第二种彩色",
+    "所有灰色暖调，禁止冷蓝灰",
+    "字体统一使用朝鲜日报明朝体",
+    "Serif 正文 400，标题 500，不用合成 bold",
+    "行距三档：紧凑标题 1.1–1.3 / 密排 1.4–1.45 / 阅读 1.5–1.55",
+    "Tag 背景必须实色 hex，禁止 rgba",
+    "阴影只用 ring 或 whisper shadow，不用硬 drop shadow"
+  ],
+  "animation": {
+    "duration": "0.4s",
+    "easing": "ease-out"
+  },
+  "features": {
+    "keyboardNavigation": true,
+    "clickNavigation": true,
+    "fixedPageNumber": true
+  },
+  "files": {
+    "style": "style.css",
+    "template": "template.html"
+  }
+}
