@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { Loader2, Globe, Terminal, FileText, Search } from "lucide-react";
 
 interface Message {
   id: string;
@@ -10,6 +11,7 @@ interface Message {
   buddyName?: string;
   buddyAvatar?: string;
   isStreaming?: boolean;
+  toolStatus?: string;
 }
 
 interface BuddyRecommendation {
@@ -25,6 +27,15 @@ interface ChatAreaProps {
   onSendMessage: (message: string) => void;
   onSelectBuddy?: (buddyId: string) => void;
   isLoading?: boolean;
+}
+
+function getToolIcon(toolStatus?: string) {
+  if (!toolStatus) return null;
+  if (toolStatus.includes("搜索")) return <Search className="w-4 h-4 text-blue-500 animate-wiggle" />;
+  if (toolStatus.includes("网页")) return <Globe className="w-4 h-4 text-green-500 animate-wiggle" />;
+  if (toolStatus.includes("命令")) return <Terminal className="w-4 h-4 text-purple-500 animate-wiggle" />;
+  if (toolStatus.includes("文件")) return <FileText className="w-4 h-4 text-orange-500 animate-wiggle" />;
+  return <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />;
 }
 
 export function ChatArea({
@@ -88,6 +99,11 @@ export function ChatArea({
                   <div className={msg.isStreaming ? "typing-cursor" : ""}>
                     {msg.role === "user" ? (
                       <span>{msg.content}</span>
+                    ) : msg.role === "assistant" && msg.toolStatus ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {getToolIcon(msg.toolStatus)}
+                        <span>{msg.toolStatus}</span>
+                      </div>
                     ) : (
                       <MarkdownRenderer content={msg.content} />
                     )}

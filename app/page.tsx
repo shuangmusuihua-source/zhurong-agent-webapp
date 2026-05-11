@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Sidebar, ChatArea, RightBar } from "@/components/layout";
 import { nanoid } from "nanoid";
 import { authClient } from "@/lib/auth/auth-client";
+import { Loader2, Globe, Terminal, FileText, Search } from "lucide-react";
 
 interface Workspace {
   id: string;
@@ -46,6 +47,7 @@ export default function Home() {
       buddyName?: string;
       buddyAvatar?: string;
       isStreaming?: boolean;
+      toolStatus?: string;
     }>
   >([]);
   const [buddyRecommendations, setBuddyRecommendations] = useState<
@@ -136,12 +138,41 @@ export default function Home() {
   };
 
   // 选择 workspace
-  const handleSelectWorkspace = (id: string) => {
+  const handleSelectWorkspace = async (id: string) => {
     setActiveWorkspaceId(id);
     setMessages([]);
     setProducts([]);
     setContextFiles([]);
     setConversationId(undefined);
+
+    // 加载该工作区的最近对话
+    try {
+      const response = await fetch(`/api/chat?workspaceId=${id}`);
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.conversations && data.conversations.length > 0) {
+          const latestConversation = data.conversations[0];
+
+          // 加载该对话的消息
+          const messagesResponse = await fetch(`/api/messages?conversationId=${latestConversation.id}`);
+          if (messagesResponse.ok) {
+            const messagesData = await messagesResponse.json();
+
+            setMessages(
+              messagesData.messages.map((m: { id: string; role: string; content: string }) => ({
+                id: m.id,
+                role: m.role as "user" | "assistant" | "buddy",
+                content: m.content,
+              }))
+            );
+            setConversationId(latestConversation.id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load conversation:", error);
+    }
   };
 
   const handleSendMessage = async (content: string) => {
@@ -174,7 +205,7 @@ export default function Home() {
     const assistantMessageId = nanoid();
     setMessages((prev) => [
       ...prev,
-      { id: assistantMessageId, role: "assistant", content: "", isStreaming: true },
+      { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." },
     ]);
 
     try {
@@ -208,12 +239,31 @@ export default function Home() {
               try {
                 const event = JSON.parse(line.slice(6));
 
+                // 处理工具调用状态
+                if (event.type === "tool_use") {
+                  const toolLabels: Record<string, string> = {
+                    "mcp__web-search__WebSearch": "正在联网搜索...",
+                    "WebSearch": "正在联网搜索...",
+                    "WebFetch": "正在抓取网页...",
+                    "Bash": "正在执行命令...",
+                    "Read": "正在读取文件...",
+                  };
+                  const label = toolLabels[event.toolName] || `正在使用 ${event.toolName}...`;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessageId
+                        ? { ...m, toolStatus: label }
+                        : m
+                    )
+                  );
+                }
+
                 // 处理文本增量 - 直接追加
                 if (event.type === "text_delta") {
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === assistantMessageId
-                        ? { ...m, content: m.content + event.text }
+                        ? { ...m, content: m.content + event.text, toolStatus: undefined }
                         : m
                     )
                   );

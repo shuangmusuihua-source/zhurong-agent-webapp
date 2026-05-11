@@ -4,6 +4,7 @@ import type {
   SDKResultMessage,
   SDKPartialAssistantMessage
 } from "@anthropic-ai/claude-agent-sdk";
+import { createWebSearchMcpServer } from "./tools/web-search";
 
 export interface AgentOptions {
   prompt: string;
@@ -18,6 +19,7 @@ export interface AgentOptions {
 export type StreamEvent =
   | { type: "text_delta"; text: string }
   | { type: "thinking_delta"; thinking: string }
+  | { type: "tool_use"; toolName: string }
   | { type: "message"; data: SDKMessage }
   | { type: "complete"; agentSessionId: string }
   | { type: "error"; message: string };
@@ -26,6 +28,9 @@ export async function* streamAgentResponse(
   options: AgentOptions
 ): AsyncGenerator<StreamEvent> {
   try {
+    // 创建 WebSearch MCP Server
+    const webSearchServer = createWebSearchMcpServer();
+
     for await (const message of query({
       prompt: options.prompt,
       options: {
@@ -38,7 +43,12 @@ export async function* streamAgentResponse(
           "Grep",
           "Edit",
           "Write",
+          "mcp__web-search__WebSearch",
         ],
+        // 添加 WebSearch MCP Server
+        mcpServers: {
+          "web-search": webSearchServer,
+        },
         settingSources: ["user", "project"],
         maxTurns: 20,
         cwd: options.cwd ?? process.cwd(),
@@ -51,7 +61,13 @@ export async function* streamAgentResponse(
         const partialMsg = message as SDKPartialAssistantMessage;
         const event = partialMsg.event;
 
-        if (event.type === "content_block_delta") {
+        if (event.type === "content_block_start") {
+          const block = event.content_block as any;
+          if (block.type === "tool_use" || block.type === "mcp_tool_use") {
+            console.log(`[Agent] 工具调用: ${block.name}`, block.input);
+            yield { type: "tool_use", toolName: block.name };
+          }
+        } else if (event.type === "content_block_delta") {
           const delta = event.delta;
 
           if (delta.type === "text_delta") {

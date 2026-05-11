@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
 
     const encoder = new TextEncoder();
     let assistantContent = "";
+    let controllerClosed = false;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -97,13 +98,11 @@ export async function POST(req: NextRequest) {
               assistantContent += event.text;
             }
 
+            // 发送事件
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+
             // 为 complete 事件添加 conversationId
             if (event.type === "complete") {
-              const completeEvent: StreamEvent & { conversationId: string } = {
-                ...event,
-                conversationId: currentConversationId!,
-              };
-
               // 更新数据库
               await db
                 .update(conversation)
@@ -123,25 +122,34 @@ export async function POST(req: NextRequest) {
                 });
               }
 
+              // 发送带 conversationId 的 complete 事件
+              const completeEvent: StreamEvent & { conversationId: string } = {
+                ...event,
+                conversationId: currentConversationId!,
+              };
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(completeEvent)}\n\n`));
+
+              controller.close();
+              controllerClosed = true;
               return;
             }
-
-            // 发送事件
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
           }
         } catch (error) {
           console.error("Stream error:", error);
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "error",
-                message: error instanceof Error ? error.message : "Stream error",
-              })}\n\n`
-            )
-          );
+          if (!controllerClosed) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "error",
+                  message: error instanceof Error ? error.message : "Stream error",
+                })}\n\n`
+              )
+            );
+          }
         } finally {
-          controller.close();
+          if (!controllerClosed) {
+            controller.close();
+          }
         }
       },
     });
