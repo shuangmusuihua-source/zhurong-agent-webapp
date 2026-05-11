@@ -2,40 +2,22 @@
 
 import { useState, useRef, useEffect } from "react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
-import { Loader2, Globe, Terminal, FileText, Search } from "lucide-react";
+import { Loader2, Globe, Terminal, FileText, Search, CornerDownLeft } from "lucide-react";
+import type { Message } from "@/lib/types";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant" | "buddy";
-  content: string;
-  buddyName?: string;
-  buddyAvatar?: string;
-  isStreaming?: boolean;
-  toolStatus?: string;
-}
-
-interface BuddyRecommendation {
-  id: string;
-  name: string;
-  avatar: string;
-  description: string;
-}
-
-interface ChatAreaProps {
-  messages: Message[];
-  buddyRecommendations?: BuddyRecommendation[];
-  onSendMessage: (message: string) => void;
-  onSelectBuddy?: (buddyId: string) => void;
-  isLoading?: boolean;
-}
+const TOOL_ICONS: Record<string, React.ReactNode> = {
+  "搜索": <Search className="w-4 h-4 text-primary animate-wiggle" />,
+  "网页": <Globe className="w-4 h-4 text-green-500 animate-wiggle" />,
+  "命令": <Terminal className="w-4 h-4 text-teal-500 animate-wiggle" />,
+  "文件": <FileText className="w-4 h-4 text-orange-500 animate-wiggle" />,
+};
 
 function getToolIcon(toolStatus?: string) {
   if (!toolStatus) return null;
-  if (toolStatus.includes("搜索")) return <Search className="w-4 h-4 text-blue-500 animate-wiggle" />;
-  if (toolStatus.includes("网页")) return <Globe className="w-4 h-4 text-green-500 animate-wiggle" />;
-  if (toolStatus.includes("命令")) return <Terminal className="w-4 h-4 text-purple-500 animate-wiggle" />;
-  if (toolStatus.includes("文件")) return <FileText className="w-4 h-4 text-orange-500 animate-wiggle" />;
-  return <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />;
+  for (const [key, icon] of Object.entries(TOOL_ICONS)) {
+    if (toolStatus.includes(key)) return icon;
+  }
+  return <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />;
 }
 
 export function ChatArea({
@@ -44,128 +26,143 @@ export function ChatArea({
   onSendMessage,
   onSelectBuddy,
   isLoading = false,
-}: ChatAreaProps) {
+}: {
+  messages: Message[];
+  buddyRecommendations?: Array<{ id: string; name: string; avatar: string; description: string }>;
+  onSendMessage: (content: string) => void;
+  onSelectBuddy: (buddyId: string) => void;
+  isLoading?: boolean;
+}) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim() && !isLoading) {
-      onSendMessage(input.trim());
-      setInput("");
+  const handleSubmit = () => {
+    if (!input.trim() || isLoading) return;
+    onSendMessage(input.trim());
+    setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
     }
   };
 
-  return (
-    <div className="flex-1 flex flex-col h-full bg-background">
-      {/* 消息列表 */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {messages.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <p className="text-lg mb-2">开始新的对话</p>
-              <p className="text-sm">描述你的任务，我会推荐合适的数字伙伴</p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4 max-w-3xl mx-auto">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`message-bubble ${
-                    msg.role === "user"
-                      ? "message-bubble-user"
-                      : "message-bubble-assistant"
-                  }`}
-                >
-                  {msg.role === "buddy" && msg.buddyName && (
-                    <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                      {msg.buddyAvatar && (
-                        <span className="text-base">{msg.buddyAvatar}</span>
-                      )}
-                      <span>{msg.buddyName}</span>
-                    </div>
-                  )}
-                  <div className={msg.isStreaming ? "typing-cursor" : ""}>
-                    {msg.role === "user" ? (
-                      <span>{msg.content}</span>
-                    ) : msg.role === "assistant" && msg.toolStatus ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {getToolIcon(msg.toolStatus)}
-                        <span>{msg.toolStatus}</span>
-                      </div>
-                    ) : (
-                      <MarkdownRenderer content={msg.content} />
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
 
-            {/* 数字伙伴推荐卡片 */}
-            {buddyRecommendations.length > 0 && (
-              <div className="bg-muted/50 rounded-xl p-4 max-w-2xl">
-                <p className="text-sm text-muted-foreground mb-3">
-                  💡 推荐数字伙伴
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {buddyRecommendations.map((buddy) => (
-                    <button
-                      key={buddy.id}
-                      onClick={() => onSelectBuddy?.(buddy.id)}
-                      className="buddy-card flex items-center gap-2"
-                    >
-                      <span className="text-xl">{buddy.avatar}</span>
-                      <div>
-                        <p className="font-medium text-sm">{buddy.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {buddy.description}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+  };
+
+  return (
+    <div className="flex flex-col bg-chat-bg rounded-2xl overflow-hidden h-full relative">
+      <div className="flex items-center justify-between px-5 py-3.5">
+        <span className="text-sm font-medium text-muted-foreground">对话</span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5 pb-20 flex flex-col gap-5">
+        {messages.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <Search className="w-6 h-6" />
+            </div>
+            <p className="text-sm">描述你的任务，开始对话</p>
+          </div>
+        )}
+
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex gap-3 max-w-[720px] ${
+              msg.role === "user" ? "self-end flex-row-reverse items-start" : ""
+            }`}
+          >
+            {msg.role === "user" && (
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                Z
+              </div>
+            )}
+            {msg.role === "assistant" && (
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-teal-400 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                AI
+              </div>
+            )}
+            {msg.role === "buddy" && (
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                {msg.buddyAvatar}
               </div>
             )}
 
-            <div ref={messagesEndRef} />
+            <div className={msg.role === "user" ? "" : "flex-1 min-w-0"}>
+              {msg.role === "user" ? (
+                <div className="message-appear px-4 py-3 bg-message-user text-message-user-fg rounded-2xl rounded-tr-sm text-sm leading-relaxed">
+                  {msg.content}
+                </div>
+              ) : msg.toolStatus ? (
+                <div className="message-appear flex items-center gap-2 px-3.5 py-2 bg-tool-status-bg border border-tool-status-border rounded-lg text-sm text-tool-status-fg">
+                  {getToolIcon(msg.toolStatus)}
+                  <span>{msg.toolStatus}</span>
+                </div>
+              ) : msg.content === "思考中..." ? (
+                <div className="message-appear flex items-center gap-2 px-3.5 py-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>思考中...</span>
+                </div>
+              ) : msg.content ? (
+                <div className={`message-appear px-4 py-3 bg-message-ai text-message-ai-fg rounded-2xl rounded-bl-sm text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert ${msg.isStreaming ? "typing-cursor" : ""}`}>
+                  <MarkdownRenderer content={msg.content} />
+                </div>
+              ) : null}
+            </div>
           </div>
-        )}
+        ))}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* 输入框 */}
-      <div className="p-4 border-t">
-        <form
-          onSubmit={handleSubmit}
-          className="max-w-3xl mx-auto flex gap-2"
+      {buddyRecommendations.length > 0 && (
+        <div className="absolute bottom-16 left-0 right-0 px-5 py-3 bg-chat-bg/80 backdrop-blur-md">
+          <p className="text-xs text-muted-foreground mb-2">推荐数字伙伴</p>
+          <div className="flex gap-2">
+            {buddyRecommendations.map((buddy) => (
+              <button
+                key={buddy.id}
+                onClick={() => onSelectBuddy(buddy.id)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors text-sm"
+              >
+                <span>{buddy.avatar}</span>
+                <span>{buddy.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="absolute bottom-4 left-5 right-5 flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={handleTextareaChange}
+          onKeyDown={handleKeyDown}
+          placeholder="描述你的任务..."
+          rows={1}
+          className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={!input.trim() || isLoading}
+          className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
         >
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="描述你的任务..."
-            disabled={isLoading}
-            className="flex-1 px-4 py-3 rounded-xl border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-          >
-            {isLoading ? "处理中..." : "发送"}
-          </button>
-        </form>
+          <CornerDownLeft className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
