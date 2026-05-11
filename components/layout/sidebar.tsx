@@ -44,14 +44,12 @@ export function Sidebar({
       }`}
     >
       <div
-        className={`flex items-center gap-2.5 p-4 ${
+        className={`flex items-center gap-2.5 px-4 pt-3.5 pb-0 ${
           collapsed ? "justify-center" : ""
         }`}
       >
         {!collapsed && (
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-teal-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            Z
-          </div>
+          <img src="/logo.svg" alt="祝融" className="w-10 h-10 rounded-lg flex-shrink-0" />
         )}
         {!collapsed && <span className="text-sm font-semibold">祝融 Agent</span>}
         <button
