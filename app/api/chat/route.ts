@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth/auth-server";
-import { streamAgentResponse } from "@/lib/agent/client";
+import { streamAgentResponse, StreamEvent } from "@/lib/agent/client";
 import { db } from "@/lib/db";
-import { chatSession, message } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { conversation, message, workspace } from "@/lib/db/schema";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 export async function POST(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { prompt, sessionId: existingSessionId, skills } = body;
+    const { prompt, conversationId: existingConversationId, skills, workspaceId } = body;
 
     if (!prompt) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
@@ -27,43 +27,61 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    let currentSessionId = existingSessionId;
+    if (!workspaceId) {
+      return new Response(JSON.stringify({ error: "Workspace is required. Please create a workspace first." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify user has access to the workspace
+    const userWorkspace = await db
+      .select()
+      .from(workspace)
+      .where(and(eq(workspace.id, workspaceId), eq(workspace.userId, session.user.id)))
+      .limit(1);
+
+    if (!userWorkspace[0]) {
+      return new Response(JSON.stringify({ error: "Workspace not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    let currentConversationId = existingConversationId;
     let agentSessionId: string | undefined;
 
-    if (currentSessionId) {
-      const existingSession = await db
+    if (currentConversationId) {
+      const existingConversation = await db
         .select()
-        .from(chatSession)
-        .where(
-          and(eq(chatSession.id, currentSessionId), eq(chatSession.userId, session.user.id))
-        )
+        .from(conversation)
+        .where(eq(conversation.id, currentConversationId))
         .limit(1);
 
-      if (existingSession[0]) {
-        agentSessionId = existingSession[0].agentSessionId ?? undefined;
+      if (existingConversation[0]) {
+        agentSessionId = existingConversation[0].agentSessionId ?? undefined;
       } else {
-        currentSessionId = undefined;
+        currentConversationId = undefined;
       }
     }
 
-    if (!currentSessionId) {
-      currentSessionId = nanoid();
-      await db.insert(chatSession).values({
-        id: currentSessionId,
-        userId: session.user.id,
+    if (!currentConversationId) {
+      currentConversationId = nanoid();
+      await db.insert(conversation).values({
+        id: currentConversationId,
+        workspaceId: workspaceId,
         title: prompt.slice(0, 100),
       });
     }
 
     await db.insert(message).values({
       id: nanoid(),
-      sessionId: currentSessionId,
+      conversationId: currentConversationId,
       role: "user",
       content: prompt,
     });
 
     const encoder = new TextEncoder();
-    let newAgentSessionId: string | undefined = agentSessionId;
     let assistantContent = "";
 
     const stream = new ReadableStream({
@@ -74,61 +92,43 @@ export async function POST(req: NextRequest) {
             sessionId: agentSessionId,
             skills,
           })) {
-            const eventData = JSON.stringify(event);
-            controller.enqueue(encoder.encode(`data: ${eventData}\n\n`));
-
-            if (event.type === "message") {
-              const msg = event.data as Record<string, unknown>;
-              if (
-                msg.type === "assistant" &&
-                "content" in msg &&
-                typeof msg.content === "string"
-              ) {
-                assistantContent += msg.content;
-              } else if (
-                msg.type === "assistant" &&
-                "message" in msg &&
-                msg.message &&
-                typeof msg.message === "object" &&
-                "content" in msg.message
-              ) {
-                const content = (msg.message as Record<string, unknown>).content;
-                if (typeof content === "string") {
-                  assistantContent += content;
-                } else if (Array.isArray(content)) {
-                  for (const block of content) {
-                    if (block && typeof block === "object" && block.type === "text" && "text" in block) {
-                      assistantContent += String(block.text);
-                    }
-                  }
-                }
-              }
+            // 累积文本用于存储
+            if (event.type === "text_delta") {
+              assistantContent += event.text;
             }
 
+            // 为 complete 事件添加 conversationId
             if (event.type === "complete") {
-              const completeData = event.data as {
-                sessionId: string;
-                result: string;
+              const completeEvent: StreamEvent & { conversationId: string } = {
+                ...event,
+                conversationId: currentConversationId!,
               };
-              newAgentSessionId = completeData.sessionId;
 
+              // 更新数据库
               await db
-                .update(chatSession)
+                .update(conversation)
                 .set({
-                  agentSessionId: newAgentSessionId,
+                  agentSessionId: event.agentSessionId,
                   updatedAt: new Date(),
                 })
-                .where(eq(chatSession.id, currentSessionId!));
+                .where(eq(conversation.id, currentConversationId!));
 
-              if (assistantContent || completeData.result) {
+              // 保存助手消息
+              if (assistantContent) {
                 await db.insert(message).values({
                   id: nanoid(),
-                  sessionId: currentSessionId!,
+                  conversationId: currentConversationId!,
                   role: "assistant",
-                  content: assistantContent || completeData.result,
+                  content: assistantContent,
                 });
               }
+
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(completeEvent)}\n\n`));
+              return;
             }
+
+            // 发送事件
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
           }
         } catch (error) {
           console.error("Stream error:", error);
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
             encoder.encode(
               `data: ${JSON.stringify({
                 type: "error",
-                data: { message: error instanceof Error ? error.message : "Stream error" },
+                message: error instanceof Error ? error.message : "Stream error",
               })}\n\n`
             )
           );
@@ -176,14 +176,42 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const userSessions = await db
-      .select()
-      .from(chatSession)
-      .where(eq(chatSession.userId, session.user.id))
-      .orderBy(desc(chatSession.updatedAt))
-      .limit(20);
+    const { searchParams } = new URL(req.url);
+    const workspaceId = searchParams.get("workspaceId");
 
-    return new Response(JSON.stringify({ sessions: userSessions }), {
+    // Get user's workspaces
+    const userWorkspaces = await db
+      .select()
+      .from(workspace)
+      .where(eq(workspace.userId, session.user.id));
+
+    if (userWorkspaces.length === 0) {
+      return new Response(JSON.stringify({ conversations: [] }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const workspaceIds = userWorkspaces.map((w) => w.id);
+
+    // Query conversations
+    let conversations;
+    if (workspaceId) {
+      conversations = await db
+        .select()
+        .from(conversation)
+        .where(eq(conversation.workspaceId, workspaceId))
+        .orderBy(desc(conversation.updatedAt))
+        .limit(20);
+    } else {
+      conversations = await db
+        .select()
+        .from(conversation)
+        .where(inArray(conversation.workspaceId, workspaceIds))
+        .orderBy(desc(conversation.updatedAt))
+        .limit(20);
+    }
+
+    return new Response(JSON.stringify({ conversations }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
