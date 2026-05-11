@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>祝融 Agent — 色彩规范 v2.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      /* --- Primary Scale (Teal/Cyan HSL 192) --- */
+      --primary-1:  hsl(192, 80%, 97%);
+      --primary-2:  hsl(192, 82%, 93%);
+      --primary-3:  hsl(192, 78%, 87%);
+      --primary-4:  hsl(192, 74%, 79%);
+      --primary-5:  hsl(192, 76%, 67%);
+      --primary-6:  hsl(192, 80%, 56%);
+      --primary-7:  hsl(192, 86%, 46%);
+      --primary-8:  hsl(192, 90%, 38%);
+      --primary-9:  hsl(192, 88%, 30%);
+      --primary-10: hsl(192, 82%, 22%);
+      --primary-11: hsl(192, 76%, 14%);
+      --primary-12: hsl(192, 70%, 7%);
+
+      /* --- Accent Scale (Amber HSL 38) --- */
+      --accent-1:  hsl(38, 90%, 97%);
+      --accent-2:  hsl(38, 88%, 93%);
+      --accent-3:  hsl(38, 85%, 86%);
+      --accent-4:  hsl(38, 82%, 76%);
+      --accent-5:  hsl(38, 86%, 64%);
+      --accent-6:  hsl(38, 90%, 54%);
+      --accent-7:  hsl(38, 92%, 50%);
+      --accent-8:  hsl(38, 88%, 42%);
+      --accent-9:  hsl(38, 84%, 34%);
+      --accent-10: hsl(38, 78%, 24%);
+      --accent-11: hsl(38, 72%, 16%);
+      --accent-12: hsl(38, 66%, 8%);
+
+      /* --- Neutral Scale (Cool Gray HSL 220) --- */
+      --neutral-1:  hsl(220, 14%, 99%);
+      --neutral-2:  hsl(220, 14%, 96%);
+      --neutral-3:  hsl(220, 12%, 92%);
+      --neutral-4:  hsl(220, 10%, 86%);
+      --neutral-5:  hsl(220, 8%, 74%);
+      --neutral-6:  hsl(220, 6%, 58%);
+      --neutral-7:  hsl(220, 8%, 42%);
+      --neutral-8:  hsl(220, 10%, 28%);
+      --neutral-9:  hsl(220, 12%, 18%);
+      --neutral-10: hsl(220, 14%, 12%);
+      --neutral-11: hsl(220, 16%, 7%);
+      --neutral-12: hsl(220, 18%, 3%);
+
+      /* --- Success Scale (Green HSL 160) --- */
+      --success-1:  hsl(160, 70%, 97%);
+      --success-2:  hsl(160, 72%, 93%);
+      --success-3:  hsl(160, 68%, 86%);
+      --success-4:  hsl(160, 64%, 76%);
+      --success-5:  hsl(160, 68%, 60%);
+      --success-6:  hsl(160, 74%, 46%);
+      --success-7:  hsl(160, 84%, 39%);
+      --success-8:  hsl(160, 80%, 32%);
+      --success-9:  hsl(160, 76%, 24%);
+      --success-10: hsl(160, 72%, 18%);
+      --success-11: hsl(160, 68%, 12%);
+      --success-12: hsl(160, 64%, 6%);
+
+      /* --- Warning Scale (Orange HSL 28) --- */
+      --warning-1:  hsl(28, 90%, 97%);
+      --warning-2:  hsl(28, 88%, 93%);
+      --warning-3:  hsl(28, 84%, 86%);
+      --warning-4:  hsl(28, 80%, 76%);
+      --warning-5:  hsl(28, 84%, 64%);
+      --warning-6:  hsl(28, 88%, 54%);
+      --warning-7:  hsl(28, 92%, 50%);
+      --warning-8:  hsl(28, 88%, 42%);
+      --warning-9:  hsl(28, 84%, 34%);
+      --warning-10: hsl(28, 78%, 24%);
+      --warning-11: hsl(28, 72%, 16%);
+      --warning-12: hsl(28, 66%, 8%);
+
+      /* --- Danger Scale (Red HSL 0) --- */
+      --danger-1:  hsl(0, 80%, 97%);
+      --danger-2:  hsl(0, 82%, 93%);
+      --danger-3:  hsl(0, 78%, 86%);
+      --danger-4:  hsl(0, 74%, 76%);
+      --danger-5:  hsl(0, 78%, 64%);
+      --danger-6:  hsl(0, 82%, 56%);
+      --danger-7:  hsl(0, 84%, 60%);
+      --danger-8:  hsl(0, 80%, 48%);
+      --danger-9:  hsl(0, 76%, 38%);
+      --danger-10: hsl(0, 72%, 28%);
+      --danger-11: hsl(0, 68%, 18%);
+      --danger-12: hsl(0, 64%, 8%);
+
+      /* --- Page --- */
+      --bg: #fafbfc;
+      --fg: #1a1d23;
+      --muted: #6b7280;
+      --divider: #e5e7eb;
+      --code-bg: #f1f5f9;
+      --code-fg: #0f172a;
+    }
+
+    body {
+      font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    code, .mono {
+      font-family: "JetBrains Mono", monospace;
+    }
+
+    /* --- Layout --- */
+    .page { max-width: 1120px; margin: 0 auto; padding: 64px 48px 120px; }
+
+    header { margin-bottom: 72px; }
+    header h1 {
+      font-size: 40px; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, hsl(192, 86%, 46%), hsl(170, 80%, 42%));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p { font-size: 16px; color: var(--muted); margin-top: 8px; max-width: 640px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 16px; padding: 4px 12px; border-radius: 999px;
+      background: var(--primary-2); color: hsl(192, 86%, 38%);
+      font-size: 12px; font-weight: 500;
+    }
+    .badge::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--primary-7);
+    }
+    .source-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 8px; margin-left: 8px; padding: 4px 12px; border-radius: 999px;
+      background: hsl(220, 14%, 96%); color: hsl(220, 8%, 42%);
+      font-size: 12px; font-weight: 500;
+    }
+
+    /* --- Section --- */
+    section { margin-bottom: 72px; }
+    section h2 {
+      font-size: 22px; font-weight: 600; letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+    section h2 + p { color: var(--muted); font-size: 14px; margin-bottom: 28px; max-width: 680px; }
+    section h3 {
+      font-size: 16px; font-weight: 600; margin-bottom: 12px; margin-top: 32px;
+    }
+
+    /* --- Scale Grid --- */
+    .scale-row {
+      display: grid; grid-template-columns: 80px repeat(12, 1fr);
+      gap: 4px; margin-bottom: 4px; align-items: center;
+    }
+    .scale-label {
+      font-size: 12px; font-weight: 500; color: var(--muted);
+      padding-right: 8px; text-align: right; white-space: nowrap;
+    }
+    .swatch {
+      aspect-ratio: 1; border-radius: 8px; position: relative;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+    }
+    .swatch:hover {
+      transform: scale(1.12);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      z-index: 2;
+    }
+    .swatch .tooltip {
+      position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%); padding: 4px 8px; border-radius: 6px;
+      background: var(--neutral-12); color: white; font-size: 11px;
+      font-family: "JetBrains Mono", monospace; white-space: nowrap;
+      opacity: 0; pointer-events: none; transition: opacity 0.15s;
+    }
+    .swatch:hover .tooltip { opacity: 1; }
+    .step-numbers {
+      display: grid; grid-template-columns: 80px repeat(12, 1fr);
+      gap: 4px; margin-bottom: 8px;
+    }
+    .step-num {
+      font-size: 10px; font-family: "JetBrains Mono", monospace;
+      color: var(--muted); text-align: center;
+    }
+
+    /* --- Semantic Tokens --- */
+    .token-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .token-card {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; border-radius: 12px;
+      background: white; border: 1px solid var(--divider);
+    }
+    .token-swatch {
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+    .token-info { flex: 1; min-width: 0; }
+    .token-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .token-value { font-size: 11px; font-family: "JetBrains Mono", monospace; color: var(--muted); }
+    .token-usage { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* --- Usage Map --- */
+    .usage-map {
+      display: grid; grid-template-columns: repeat(12, 1fr);
+      gap: 3px; border-radius: 12px; overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .usage-cell {
+      padding: 12px 4px; text-align: center; font-size: 10px;
+      font-family: "JetBrains Mono", monospace; font-weight: 500;
+    }
+    .usage-legend {
+      display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px;
+    }
+    .usage-legend-item {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
+    }
+    .usage-legend-dot {
+      width: 10px; height: 10px; border-radius: 3px;
+    }
+
+    /* --- Contrast Demo --- */
+    .contrast-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .contrast-card {
+      border-radius: 12px; padding: 20px; text-align: center;
+    }
+    .contrast-card .label { font-size: 11px; font-weight: 500; opacity: 0.7; margin-bottom: 4px; }
+    .contrast-card .text { font-size: 15px; font-weight: 600; }
+    .contrast-card .ratio { font-size: 11px; font-family: "JetBrains Mono", monospace; opacity: 0.6; margin-top: 6px; }
+
+    /* --- Dark Mode Preview --- */
+    .dark-preview {
+      background: hsl(220, 16%, 4%);
+      border-radius: 16px; padding: 32px; margin-top: 24px;
+    }
+    .dark-preview h3 { color: white; font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+
+    /* --- Code Block --- */
+    .code-block {
+      background: var(--code-bg); border-radius: 10px; padding: 16px 20px;
+      font-family: "JetBrains Mono", monospace; font-size: 12px;
+      line-height: 1.7; color: var(--code-fg); overflow-x: auto;
+      border: 1px solid var(--divider);
+    }
+    .code-block .comment { color: #94a3b8; }
+    .code-block .prop { color: #0ea5e9; }
+    .code-block .val { color: #10b981; }
+
+    /* --- Principle Cards --- */
+    .principle-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .principle-card {
+      padding: 24px; border-radius: 14px; background: white;
+      border: 1px solid var(--divider);
+    }
+    .principle-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .principle-card p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .principle-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin-bottom: 12px;
+    }
+
+    /* --- Takeaway Cards --- */
+    .takeaway-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+    }
+    .takeaway-card {
+      padding: 16px 18px; border-radius: 10px; background: white;
+      border: 1px solid var(--divider); border-left: 3px solid var(--primary-7);
+    }
+    .takeaway-card .num {
+      font-size: 11px; font-family: "JetBrains Mono", monospace;
+      color: var(--primary-7); font-weight: 600;
+    }
+    .takeaway-card .title { font-size: 13px; font-weight: 600; margin: 4px 0; }
+    .takeaway-card .desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* --- Component Demo --- */
+    .demo-row {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;
+    }
+    .demo-btn {
+      padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      border: none; cursor: pointer; transition: all 0.15s;
+    }
+    .demo-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .demo-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500;
+    }
+    .demo-input {
+      padding: 8px 14px; border-radius: 8px; font-size: 13px;
+      border: 1px solid; outline: none; width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>祝融 Agent 色彩规范</h1>
+      <p>基于 designsystems.com 方法论与 Radix Colors 12 阶色阶体系，构建可访问、可扩展的色彩系统。主色为蓝绿色（HSL 192），搭配琥珀色强调色与冷灰色中性色阶。</p>
+      <div class="badge">v2.0 · 基于 Radix Colors 方法论</div>
+      <div class="source-tag">参考: designsystems.com · Nathan Curtis · Radix Colors</div>
+    </header>
+
+    <!-- Methodology -->
+    <section>
+      <h2>方法论来源</h2>
+      <p>色彩系统基于 designsystems.com 推荐的最佳实践，核心参考 Nathan Curtis 的 16 条色彩设计原则与 Radix Colors 的 12 阶色阶体系。</p>
+
+      <div class="takeaway-grid">
+        <div class="takeaway-card">
+          <div class="num">#1</div>
+          <div class="title">色阶而非单色</div>
+          <div class="desc">每种颜色定义 12 个明度步骤（tint → base → shade），覆盖从最浅背景到最深文字的所有场景，而非仅定义一个主色值。</div>
+        </div>
+        <div class="takeaway-card">
+          <div class="num">#2</div>
+          <div class="title">语义化命名</div>
+          <div class="desc">组件引用语义 Token（如 <code>--primary</code>、<code>--destructive</code>）而非色阶步骤号。Token 映射到色阶步骤，暗色模式只需切换映射。</div>
+        </div>
+        <div class="takeaway-card">
+          <div class="num">#3</div>
+          <div class="title">对比度优先</div>
+          <div class="desc">色阶设计保证高阶色（11-12）与低阶色（1-2）组合自动满足 WCAG AA（4.5:1），无需逐个检查。</div>
+        </div>
+        <div class="takeaway-card">
+          <div class="num">#4</div>
+          <div class="title">暗色模式反转</div>
+          <div class="desc">暗色模式下色阶方向反转：低阶变深、高阶变浅。语义映射不变，仅替换 CSS 变量组。</div>
+        </div>
+        <div class="takeaway-card">
+          <div class="num">#5</div>
+          <div class="title">强调色隔离</div>
+          <div class="desc">主色与强调色（Accent）分属不同色相，避免同色系混淆。强调色仅用于需要额外注意的元素，如用户头像、重要标记。</div>
+        </div>
+        <div class="takeaway-card">
+          <div class="num">#6</div>
+          <div class="title">中性色带色相</div>
+          <div class="desc">中性色阶不是纯灰，而是带有微弱色相（HSL 220 冷灰），与主色色温一致，避免纯灰与蓝绿色系不协调。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Primary Scale -->
+    <section>
+      <h2>主色阶 — Teal / Cyan</h2>
+      <p>主色 HSL 192，12 阶从浅到深。步骤 7 为品牌主色，用于按钮、链接、焦点环等核心交互元素。色相从 v1 的 199 调整为 192，更偏青色，与冷灰中性色阶更协调。</p>
+
+      <div class="step-numbers">
+        <div></div>
+        <div class="step-num">1</div><div class="step-num">2</div><div class="step-num">3</div>
+        <div class="step-num">4</div><div class="step-num">5</div><div class="step-num">6</div>
+        <div class="step-num">7</div><div class="step-num">8</div><div class="step-num">9</div>
+        <div class="step-num">10</div><div class="step-num">11</div><div class="step-num">12</div>
+      </div>
+
+      <div class="scale-row">
+        <div class="scale-label">Light</div>
+        <div class="swatch" style="background: var(--primary-1);"><span class="tooltip">hsl(192, 80%, 97%)</span></div>
+        <div class="swatch" style="background: var(--primary-2);"><span class="tooltip">hsl(192, 82%, 93%)</span></div>
+        <div class="swatch" style="background: var(--primary-3);"><span class="tooltip">hsl(192, 78%, 87%)</span></div>
+        <div class="swatch" style="background: var(--primary-4);"><span class="tooltip">hsl(192, 74%, 79%)</span></div>
+        <div class="swatch" style="background: var(--primary-5);"><span class="tooltip">hsl(192, 76%, 67%)</span></div>
+        <div class="swatch" style="background: var(--primary-6);"><span class="tooltip">hsl(192, 80%, 56%)</span></div>
+        <div class="swatch" style="background: var(--primary-7);"><span class="tooltip">hsl(192, 86%, 46%)</span></div>
+        <div class="swatch" style="background: var(--primary-8);"><span class="tooltip">hsl(192, 90%, 38%)</span></div>
+        <div class="swatch" style="background: var(--primary-9);"><span class="tooltip">hsl(192, 88%, 30%)</span></div>
+        <div class="swatch" style="background: var(--primary-10);"><span class="tooltip">hsl(192, 82%, 22%)</span></div>
+        <div class="swatch" style="background: var(--primary-11);"><span class="tooltip">hsl(192, 76%, 14%)</span></div>
+        <div class="swatch" style="background: var(--primary-12);"><span class="tooltip">hsl(192, 70%, 7%)</span></div>
+      </div>
+
+      <div class="scale-row" style="margin-top: 12px;">
+        <div class="scale-label">Dark</div>
+        <div class="swatch" style="background: hsl(192, 70%, 7%);"><span class="tooltip">hsl(192, 70%, 7%)</span></div>
+        <div class="swatch" style="background: hsl(192, 76%, 11%);"><span class="tooltip">hsl(192, 76%, 11%)</span></div>
+        <div class="swatch" style="background: hsl(192, 74%, 15%);"><span class="tooltip">hsl(192, 74%, 15%)</span></div>
+        <div class="swatch" style="background: hsl(192, 70%, 21%);"><span class="tooltip">hsl(192, 70%, 21%)</span></div>
+        <div class="swatch" style="background: hsl(192, 68%, 29%);"><span class="tooltip">hsl(192, 68%, 29%)</span></div>
+        <div class="swatch" style="background: hsl(192, 74%, 39%);"><span class="tooltip">hsl(192, 74%, 39%)</span></div>
+        <div class="swatch" style="background: hsl(192, 86%, 46%);"><span class="tooltip">hsl(192, 86%, 46%)</span></div>
+        <div class="swatch" style="background: hsl(192, 84%, 56%);"><span class="tooltip">hsl(192, 84%, 56%)</span></div>
+        <div class="swatch" style="background: hsl(192, 78%, 67%);"><span class="tooltip">hsl(192, 78%, 67%)</span></div>
+        <div class="swatch" style="background: hsl(192, 74%, 79%);"><span class="tooltip">hsl(192, 74%, 79%)</span></div>
+        <div class="swatch" style="background: hsl(192, 80%, 88%);"><span class="tooltip">hsl(192, 80%, 88%)</span></div>
+        <div class="swatch" style="background: hsl(192, 82%, 97%);"><span class="tooltip">hsl(192, 82%, 97%)</span></div>
+      </div>
+    </section>
+
+    <!-- Usage Map -->
+    <section>
+      <h2>色阶用途映射</h2>
+      <p>12 阶色阶中每一步的语义用途，遵循 Radix Colors 的阶梯映射规则。Nathan Curtis 建议：色阶步骤与 UI 用途之间建立固定映射，避免随意取色。</p>
+
+      <div class="usage-map">
+        <div class="usage-cell" style="background: var(--primary-1); color: var(--primary-11);">1<br><span style="font-size:9px;opacity:0.7">App BG</span></div>
+        <div class="usage-cell" style="background: var(--primary-2); color: var(--primary-11);">2<br><span style="font-size:9px;opacity:0.7">Subtle BG</span></div>
+        <div class="usage-cell" style="background: var(--primary-3); color: var(--primary-11);">3<br><span style="font-size:9px;opacity:0.7">UI BG</span></div>
+        <div class="usage-cell" style="background: var(--primary-4); color: var(--primary-11);">4<br><span style="font-size:9px;opacity:0.7">Hover BG</span></div>
+        <div class="usage-cell" style="background: var(--primary-5); color: white;">5<br><span style="font-size:9px;opacity:0.7">Active BG</span></div>
+        <div class="usage-cell" style="background: var(--primary-6); color: white;">6<br><span style="font-size:9px;opacity:0.7">Border</span></div>
+        <div class="usage-cell" style="background: var(--primary-7); color: white;">7<br><span style="font-size:9px;opacity:0.7">Solid BG</span></div>
+        <div class="usage-cell" style="background: var(--primary-8); color: white;">8<br><span style="font-size:9px;opacity:0.7">Hover Solid</span></div>
+        <div class="usage-cell" style="background: var(--primary-9); color: white;">9<br><span style="font-size:9px;opacity:0.7">Pressed</span></div>
+        <div class="usage-cell" style="background: var(--primary-10); color: white;">10<br><span style="font-size:9px;opacity:0.7">Low-Contr.</span></div>
+        <div class="usage-cell" style="background: var(--primary-11); color: white;">11<br><span style="font-size:9px;opacity:0.7">Hi-Contr.</span></div>
+        <div class="usage-cell" style="background: var(--primary-12); color: white;">12<br><span style="font-size:9px;opacity:0.7">Pure Text</span></div>
+      </div>
+
+      <div class="usage-legend">
+        <div class="usage-legend-item"><div class="usage-legend-dot" style="background: var(--primary-2);"></div>1-2 应用背景</div>
+        <div class="usage-legend-item"><div class="usage-legend-dot" style="background: var(--primary-4);"></div>3-4 交互背景</div>
+        <div class="usage-legend-item"><div class="usage-legend-dot" style="background: var(--primary-6);"></div>5-6 边框线</div>
+        <div class="usage-legend-item"><div class="usage-legend-dot" style="background: var(--primary-7);"></div>7-9 实色填充</div>
+        <div class="usage-legend-item"><div class="usage-legend-dot" style="background: var(--primary-11);"></div>10-12 文字</div>
+      </div>
+    </section>
+
+    <!-- Accent Scale -->
+    <section>
+      <h2>强调色阶 — Amber</h2>
+      <p>强调色 HSL 38（琥珀色），与主色蓝绿色形成互补对比。仅用于需要额外注意的元素：用户头像渐变、重要标记、通知徽标。Nathan Curtis 建议：强调色应克制使用，避免与主色竞争注意力。</p>
+
+      <div class="step-numbers">
+        <div></div>
+        <div class="step-num">1</div><div class="step-num">2</div><div class="step-num">3</div>
+        <div class="step-num">4</div><div class="step-num">5</div><div class="step-num">6</div>
+        <div class="step-num">7</div><div class="step-num">8</div><div class="step-num">9</div>
+        <div class="step-num">10</div><div class="step-num">11</div><div class="step-num">12</div>
+      </div>
+
+      <div class="scale-row">
+        <div class="scale-label">Light</div>
+        <div class="swatch" style="background: var(--accent-1);"><span class="tooltip">hsl(38, 90%, 97%)</span></div>
+        <div class="swatch" style="background: var(--accent-2);"><span class="tooltip">hsl(38, 88%, 93%)</span></div>
+        <div class="swatch" style="background: var(--accent-3);"><span class="tooltip">hsl(38, 85%, 86%)</span></div>
+        <div class="swatch" style="background: var(--accent-4);"><span class="tooltip">hsl(38, 82%, 76%)</span></div>
+        <div class="swatch" style="background: var(--accent-5);"><span class="tooltip">hsl(38, 86%, 64%)</span></div>
+        <div class="swatch" style="background: var(--accent-6);"><span class="tooltip">hsl(38, 90%, 54%)</span></div>
+        <div class="swatch" style="background: var(--accent-7);"><span class="tooltip">hsl(38, 92%, 50%)</span></div>
+        <div class="swatch" style="background: var(--accent-8);"><span class="tooltip">hsl(38, 88%, 42%)</span></div>
+        <div class="swatch" style="background: var(--accent-9);"><span class="tooltip">hsl(38, 84%, 34%)</span></div>
+        <div class="swatch" style="background: var(--accent-10);"><span class="tooltip">hsl(38, 78%, 24%)</span></div>
+        <div class="swatch" style="background: var(--accent-11);"><span class="tooltip">hsl(38, 72%, 16%)</span></div>
+        <div class="swatch" style="background: var(--accent-12);"><span class="tooltip">hsl(38, 66%, 8%)</span></div>
+      </div>
+    </section>
+
+    <!-- Neutral Scale -->
+    <section>
+      <h2>中性色阶 — Cool Gray</h2>
+      <p>冷灰色中性色阶（HSL 220），带有微弱蓝色色相，与主色蓝绿色温一致。Nathan Curtis 强调：中性色不应是纯灰，应带有与主色一致的色温偏移，否则在彩色界面中会显得"脏"或不协调。</p>
+
+      <div class="step-numbers">
+        <div></div>
+        <div class="step-num">1</div><div class="step-num">2</div><div class="step-num">3</div>
+        <div class="step-num">4</div><div class="step-num">5</div><div class="step-num">6</div>
+        <div class="step-num">7</div><div class="step-num">8</div><div class="step-num">9</div>
+        <div class="step-num">10</div><div class="step-num">11</div><div class="step-num">12</div>
+      </div>
+
+      <div class="scale-row">
+        <div class="scale-label">Light</div>
+        <div class="swatch" style="background: var(--neutral-1);"><span class="tooltip">hsl(220, 14%, 99%)</span></div>
+        <div class="swatch" style="background: var(--neutral-2);"><span class="tooltip">hsl(220, 14%, 96%)</span></div>
+        <div class="swatch" style="background: var(--neutral-3);"><span class="tooltip">hsl(220, 12%, 92%)</span></div>
+        <div class="swatch" style="background: var(--neutral-4);"><span class="tooltip">hsl(220, 10%, 86%)</span></div>
+        <div class="swatch" style="background: var(--neutral-5);"><span class="tooltip">hsl(220, 8%, 74%)</span></div>
+        <div class="swatch" style="background: var(--neutral-6);"><span class="tooltip">hsl(220, 6%, 58%)</span></div>
+        <div class="swatch" style="background: var(--neutral-7);"><span class="tooltip">hsl(220, 8%, 42%)</span></div>
+        <div class="swatch" style="background: var(--neutral-8);"><span class="tooltip">hsl(220, 10%, 28%)</span></div>
+        <div class="swatch" style="background: var(--neutral-9);"><span class="tooltip">hsl(220, 12%, 18%)</span></div>
+        <div class="swatch" style="background: var(--neutral-10);"><span class="tooltip">hsl(220, 14%, 12%)</span></div>
+        <div class="swatch" style="background: var(--neutral-11);"><span class="tooltip">hsl(220, 16%, 7%)</span></div>
+        <div class="swatch" style="background: var(--neutral-12);"><span class="tooltip">hsl(220, 18%, 3%)</span></div>
+      </div>
+
+      <div class="scale-row" style="margin-top: 12px;">
+        <div class="scale-label">Dark</div>
+        <div class="swatch" style="background: hsl(220, 18%, 3%);"><span class="tooltip">hsl(220, 18%, 3%)</span></div>
+        <div class="swatch" style="background: hsl(220, 16%, 6%);"><span class="tooltip">hsl(220, 16%, 6%)</span></div>
+        <div class="swatch" style="background: hsl(220, 14%, 8%);"><span class="tooltip">hsl(220, 14%, 8%)</span></div>
+        <div class="swatch" style="background: hsl(220, 12%, 12%);"><span class="tooltip">hsl(220, 12%, 12%)</span></div>
+        <div class="swatch" style="background: hsl(220, 10%, 18%);"><span class="tooltip">hsl(220, 10%, 18%)</span></div>
+        <div class="swatch" style="background: hsl(220, 8%, 28%);"><span class="tooltip">hsl(220, 8%, 28%)</span></div>
+        <div class="swatch" style="background: hsl(220, 6%, 42%);"><span class="tooltip">hsl(220, 6%, 42%)</span></div>
+        <div class="swatch" style="background: hsl(220, 6%, 58%);"><span class="tooltip">hsl(220, 6%, 58%)</span></div>
+        <div class="swatch" style="background: hsl(220, 8%, 72%);"><span class="tooltip">hsl(220, 8%, 72%)</span></div>
+        <div class="swatch" style="background: hsl(220, 10%, 86%);"><span class="tooltip">hsl(220, 10%, 86%)</span></div>
+        <div class="swatch" style="background: hsl(220, 12%, 94%);"><span class="tooltip">hsl(220, 12%, 94%)</span></div>
+        <div class="swatch" style="background: hsl(220, 14%, 99%);"><span class="tooltip">hsl(220, 14%, 99%)</span></div>
+      </div>
+    </section>
+
+    <!-- Semantic Scales -->
+    <section>
+      <h2>语义色阶</h2>
+      <p>功能状态色阶，每种颜色同样定义 12 阶，用于 toast、badge、状态指示器等。遵循 Nathan Curtis 建议：功能色与主色使用相同的色阶结构，确保一致性。</p>
+
+      <h3>Success — Green (HSL 160)</h3>
+      <div class="scale-row">
+        <div class="scale-label">Light</div>
+        <div class="swatch" style="background: var(--success-1);"><span class="tooltip">hsl(160, 70%, 97%)</span></div>
+        <div class="swatch" style="background: var(--success-2);"><span class="tooltip">hsl(160, 72%, 93%)</span></div>
+        <div class="swatch" style="background: var(--success-3);"><span class="tooltip">hsl(160, 68%, 86%)</span></div>
+        <div class="swatch" style="background: var(--success-4);"><span class="tooltip">hsl(160, 64%, 76%)</span></div>
+        <div class="swatch" style="background: var(--success-5);"><span class="tooltip">hsl(160, 68%, 60%)</span></div>
+        <div class="swatch" style="background: var(--success-6);"><span class="tooltip">hsl(160, 74%, 46%)</span></div>
+        <div class="swatch" style="background: var(--success-7);"><span class="tooltip">hsl(160, 84%, 39%)</span></div>
+        <div class="swatch" style="background: var(--success-8);"><span class="tooltip">hsl(160, 80%, 32%)</span></div>
+        <div class="swatch" style="background: var(--success-9);"><span class="tooltip">hsl(160, 76%, 24%)</span></div>
+        <div class="swatch" style="background: var(--success-10);"><span class="tooltip">hsl(160, 72%, 18%)</span></div>
+        <div class="swatch" style="background: var(--success-11);"><span class="tooltip">hsl(160, 68%, 12%)</span></div>
+        <div class="swatch" style="background: var(--success-12);"><span class="tooltip">hsl(160, 64%, 6%)</span></div>
+      </div>
+
+      <h3>Warning — Orange (HSL 28)</h3>
+      <div class="scale-row">
+        <div class="scale-label">Light</div>
+        <div class="swatch" style="background: var(--warning-1);"><span class="tooltip">hsl(28, 90%, 97%)</span></div>
+        <div class="swatch" style="background: var(--warning-2);"><span class="tooltip">hsl(28, 88%, 93%)</span></div>
+        <div class="swatch" style="background: var(--warning-3);"><span class="tooltip">hsl(28, 84%, 86%)</span></div>
+        <div class="swatch" style="background: var(--warning-4);"><span class="tooltip">hsl(28, 80%, 76%)</span></div>
+        <div class="swatch" style="background: var(--warning-5);"><span class="tooltip">hsl(28, 84%, 64%)</span></div>
+        <div class="swatch" style="background: var(--warning-6);"><span class="tooltip">hsl(28, 88%, 54%)</span></div>
+        <div class="swatch" style="background: var(--warning-7);"><span class="tooltip">hsl(28, 92%, 50%)</span></div>
+        <div class="swatch" style="background: var(--warning-8);"><span class="tooltip">hsl(28, 88%, 42%)</span></div>
+        <div class="swatch" style="background: var(--warning-9);"><span class="tooltip">hsl(28, 84%, 34%)</span></div>
+        <div class="swatch" style="background: var(--warning-10);"><span class="tooltip">hsl(28, 78%, 24%)</span></div>
+        <div class="swatch" style="background: var(--warning-11);"><span class="tooltip">hsl(28, 72%, 16%)</span></div>
+        <div class="swatch" style="background: var(--warning-12);"><span class="tooltip">hsl(28, 66%, 8%)</span></div>
+      </div>
+
+      <h3>Danger — Red (HSL 0)</h3>
+      <div class="scale-row">
+        <div class="scale-label">Light</div>
+        <div class="swatch" style="background: var(--danger-1);"><span class="tooltip">hsl(0, 80%, 97%)</span></div>
+        <div class="swatch" style="background: var(--danger-2);"><span class="tooltip">hsl(0, 82%, 93%)</span></div>
+        <div class="swatch" style="background: var(--danger-3);"><span class="tooltip">hsl(0, 78%, 86%)</span></div>
+        <div class="swatch" style="background: var(--danger-4);"><span class="tooltip">hsl(0, 74%, 76%)</span></div>
+        <div class="swatch" style="background: var(--danger-5);"><span class="tooltip">hsl(0, 78%, 64%)</span></div>
+        <div class="swatch" style="background: var(--danger-6);"><span class="tooltip">hsl(0, 82%, 56%)</span></div>
+        <div class="swatch" style="background: var(--danger-7);"><span class="tooltip">hsl(0, 84%, 60%)</span></div>
+        <div class="swatch" style="background: var(--danger-8);"><span class="tooltip">hsl(0, 80%, 48%)</span></div>
+        <div class="swatch" style="background: var(--danger-9);"><span class="tooltip">hsl(0, 76%, 38%)</span></div>
+        <div class="swatch" style="background: var(--danger-10);"><span class="tooltip">hsl(0, 72%, 28%)</span></div>
+        <div class="swatch" style="background: var(--danger-11);"><span class="tooltip">hsl(0, 68%, 18%)</span></div>
+        <div class="swatch" style="background: var(--danger-12);"><span class="tooltip">hsl(0, 64%, 8%)</span></div>
+      </div>
+    </section>
+
+    <!-- Semantic Tokens -->
+    <section>
+      <h2>语义色彩 Token</h2>
+      <p>将色阶步骤映射为语义化 Token。designsystems.com 建议：组件仅引用语义 Token，不直接使用色阶步骤号。暗色模式通过替换 Token 映射实现。</p>
+
+      <div class="token-grid">
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(192, 86%, 46%);"></div>
+          <div class="token-info">
+            <div class="token-name">--primary</div>
+            <div class="token-value">192 86% 46% (step 7)</div>
+            <div class="token-usage">按钮、链接、焦点环、品牌色</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(0, 0%, 98%);"></div>
+          <div class="token-info">
+            <div class="token-name">--primary-foreground</div>
+            <div class="token-value">0 0% 98%</div>
+            <div class="token-usage">主色上的文字</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(220, 14%, 96%);"></div>
+          <div class="token-info">
+            <div class="token-name">--secondary</div>
+            <div class="token-value">220 14% 96% (neutral-2)</div>
+            <div class="token-usage">次要背景、卡片底色</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(220, 6%, 58%);"></div>
+          <div class="token-info">
+            <div class="token-name">--muted-foreground</div>
+            <div class="token-value">220 6% 58% (neutral-6)</div>
+            <div class="token-usage">次要文字、占位符</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(220, 10%, 86%);"></div>
+          <div class="token-info">
+            <div class="token-name">--border</div>
+            <div class="token-value">220 10% 86% (neutral-4)</div>
+            <div class="token-usage">边框、分割线</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(0, 84%, 60%);"></div>
+          <div class="token-info">
+            <div class="token-name">--destructive</div>
+            <div class="token-value">0 84% 60% (danger-7)</div>
+            <div class="token-usage">危险操作、错误状态</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(160, 84%, 39%);"></div>
+          <div class="token-info">
+            <div class="token-name">--success</div>
+            <div class="token-value">160 84% 39% (success-7)</div>
+            <div class="token-usage">成功状态、完成标记</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(28, 92%, 50%);"></div>
+          <div class="token-info">
+            <div class="token-name">--warning</div>
+            <div class="token-value">28 92% 50% (warning-7)</div>
+            <div class="token-usage">警告状态、进行中</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(38, 92%, 50%);"></div>
+          <div class="token-info">
+            <div class="token-name">--accent</div>
+            <div class="token-value">38 92% 50% (accent-7)</div>
+            <div class="token-usage">强调色、用户头像、重要标记</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(192, 86%, 46%, 0.08);"></div>
+          <div class="token-info">
+            <div class="token-name">--tool-status-bg</div>
+            <div class="token-value">192 86% 46% / 0.08</div>
+            <div class="token-usage">工具调用状态背景</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(220, 14%, 100%);"></div>
+          <div class="token-info">
+            <div class="token-name">--sidebar-bg</div>
+            <div class="token-value">220 14% 100% (neutral-1)</div>
+            <div class="token-usage">侧边栏背景</div>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-swatch" style="background: hsl(220, 12%, 96%);"></div>
+          <div class="token-info">
+            <div class="token-name">--chat-bg</div>
+            <div class="token-value">220 12% 96% (neutral-2)</div>
+            <div class="token-usage">对话区域背景</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contrast -->
+    <section>
+      <h2>对比度验证</h2>
+      <p>关键文字/背景组合的对比度，确保满足 WCAG AA 标准（4.5:1）。designsystems.com 建议：色阶设计应保证步骤 11-12 与步骤 1-2 的组合自动达标。</p>
+
+      <div class="contrast-grid">
+        <div class="contrast-card" style="background: var(--primary-1); color: var(--primary-11);">
+          <div class="label">Primary 11 on 1</div>
+          <div class="text">祝融 Agent</div>
+          <div class="ratio">≥ 12:1</div>
+        </div>
+        <div class="contrast-card" style="background: var(--primary-7); color: white;">
+          <div class="label">White on Primary 7</div>
+          <div class="text">发送消息</div>
+          <div class="ratio">≥ 4.6:1</div>
+        </div>
+        <div class="contrast-card" style="background: var(--neutral-2); color: var(--neutral-11);">
+          <div class="label">Neutral 11 on 2</div>
+          <div class="text">描述你的任务</div>
+          <div class="ratio">≥ 14:1</div>
+        </div>
+        <div class="contrast-card" style="background: var(--danger-1); color: var(--danger-11);">
+          <div class="label">Danger 11 on 1</div>
+          <div class="text">删除工作区</div>
+          <div class="ratio">≥ 10:1</div>
+        </div>
+        <div class="contrast-card" style="background: var(--success-1); color: var(--success-11);">
+          <div class="label">Success 11 on 1</div>
+          <div class="text">已完成</div>
+          <div class="ratio">≥ 10:1</div>
+        </div>
+        <div class="contrast-card" style="background: var(--accent-1); color: var(--accent-11);">
+          <div class="label">Accent 11 on 1</div>
+          <div class="text">用户标记</div>
+          <div class="ratio">≥ 10:1</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Component Demo -->
+    <section>
+      <h2>组件色彩示例</h2>
+      <p>语义 Token 在实际组件中的应用，验证色彩系统的一致性。</p>
+
+      <div class="demo-row">
+        <button class="demo-btn" style="background: hsl(192,86%,46%); color: white;">主要按钮</button>
+        <button class="demo-btn" style="background: hsl(192,90%,38%); color: white;">悬停态</button>
+        <button class="demo-btn" style="background: white; color: hsl(192,86%,46%); border: 1px solid hsl(192,80%,56%);">次要按钮</button>
+        <button class="demo-btn" style="background: hsl(0,84%,60%); color: white;">危险按钮</button>
+        <button class="demo-btn" style="background: hsl(220,14%,96%); color: hsl(220,8%,42%);">幽灵按钮</button>
+      </div>
+
+      <div class="demo-row" style="margin-top: 16px;">
+        <span class="demo-badge" style="background: hsl(192,80%,97%); color: hsl(192,90%,38%);">信息</span>
+        <span class="demo-badge" style="background: hsl(160,70%,97%); color: hsl(160,84%,39%);">成功</span>
+        <span class="demo-badge" style="background: hsl(28,90%,97%); color: hsl(28,92%,50%);">警告</span>
+        <span class="demo-badge" style="background: hsl(0,80%,97%); color: hsl(0,84%,60%);">错误</span>
+        <span class="demo-badge" style="background: hsl(38,90%,97%); color: hsl(38,92%,50%);">强调</span>
+      </div>
+
+      <div class="demo-row" style="margin-top: 16px;">
+        <input class="demo-input" style="background: white; border-color: hsl(220,10%,86%); color: hsl(220,8%,42%);" placeholder="默认输入框">
+        <input class="demo-input" style="background: white; border-color: hsl(192,80%,56%); box-shadow: 0 0 0 2px hsl(192,86%,46%,0.2); color: hsl(220,8%,42%);" placeholder="聚焦态">
+      </div>
+    </section>
+
+    <!-- Dark Mode -->
+    <section>
+      <h2>暗色模式</h2>
+      <p>暗色模式下色阶方向反转，低阶变深、高阶变浅，语义映射不变。designsystems.com 建议：暗色模式不是简单的亮度反转，而是重新映射色阶步骤到语义 Token。</p>
+
+      <div class="dark-preview">
+        <h3>暗色模式 Token 映射</h3>
+        <div class="token-grid">
+          <div class="token-card" style="background: hsl(220,16%,7%); border-color: hsl(220,12%,12%);">
+            <div class="token-swatch" style="background: hsl(192, 86%, 46%);"></div>
+            <div class="token-info">
+              <div class="token-name" style="color: white;">--primary</div>
+              <div class="token-value" style="color: hsl(220,6%,58%);">192 86% 46% (不变)</div>
+              <div class="token-usage" style="color: hsl(220,8%,42%);">主色在暗色模式下保持不变</div>
+            </div>
+          </div>
+          <div class="token-card" style="background: hsl(220,16%,7%); border-color: hsl(220,12%,12%);">
+            <div class="token-swatch" style="background: hsl(220,16%,6%);"></div>
+            <div class="token-info">
+              <div class="token-name" style="color: white;">--sidebar-bg</div>
+              <div class="token-value" style="color: hsl(220,6%,58%);">220 16% 6% (neutral-12)</div>
+              <div class="token-usage" style="color: hsl(220,8%,42%);">侧边栏背景</div>
+            </div>
+          </div>
+          <div class="token-card" style="background: hsl(220,16%,7%); border-color: hsl(220,12%,12%);">
+            <div class="token-swatch" style="background: hsl(220,14%,8%);"></div>
+            <div class="token-info">
+              <div class="token-name" style="color: white;">--chat-bg</div>
+              <div class="token-value" style="color: hsl(220,6%,58%);">220 14% 8% (neutral-11)</div>
+              <div class="token-usage" style="color: hsl(220,8%,42%);">对话区域背景</div>
+            </div>
+          </div>
+          <div class="token-card" style="background: hsl(220,16%,7%); border-color: hsl(220,12%,12%);">
+            <div class="token-swatch" style="background: hsl(220,10%,18%);"></div>
+            <div class="token-info">
+              <div class="token-name" style="color: white;">--message-ai</div>
+              <div class="token-value" style="color: hsl(220,6%,58%);">220 10% 18% (neutral-9)</div>
+              <div class="token-usage" style="color: hsl(220,8%,42%);">AI 消息气泡背景</div>
+            </div>
+          </div>
+          <div class="token-card" style="background: hsl(220,16%,7%); border-color: hsl(220,12%,12%);">
+            <div class="token-swatch" style="background: hsl(220,6%,58%);"></div>
+            <div class="token-info">
+              <div class="token-name" style="color: white;">--muted-foreground</div>
+              <div class="token-value" style="color: hsl(220,6%,58%);">220 6% 58% (neutral-6)</div>
+              <div class="token-usage" style="color: hsl(220,8%,42%);">次要文字</div>
+            </div>
+          </div>
+          <div class="token-card" style="background: hsl(220,16%,7%); border-color: hsl(220,12%,12%);">
+            <div class="token-swatch" style="background: hsl(220,12%,12%);"></div>
+            <div class="token-info">
+              <div class="token-name" style="color: white;">--border</div>
+              <div class="token-value" style="color: hsl(220,6%,58%);">220 12% 12% (neutral-10)</div>
+              <div class="token-usage" style="color: hsl(220,8%,42%);">边框、分割线</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CSS Variables -->
+    <section>
+      <h2>CSS 变量定义</h2>
+      <p>当前 globals.css 中的完整色彩变量定义，可直接复制使用。</p>
+
+      <div class="code-block">
+<span class="comment">/* Light Mode */</span>
+<span class="prop">:root</span> {
+  <span class="prop">--primary</span>: <span class="val">192 86% 46%</span>;
+  <span class="prop">--primary-foreground</span>: <span class="val">0 0% 98%</span>;
+  <span class="prop">--secondary</span>: <span class="val">220 14% 96%</span>;
+  <span class="prop">--muted-foreground</span>: <span class="val">220 6% 58%</span>;
+  <span class="prop">--border</span>: <span class="val">220 10% 86%</span>;
+  <span class="prop">--destructive</span>: <span class="val">0 84% 60%</span>;
+  <span class="prop">--success</span>: <span class="val">160 84% 39%</span>;
+  <span class="prop">--warning</span>: <span class="val">28 92% 50%</span>;
+  <span class="prop">--accent</span>: <span class="val">38 92% 50%</span>;
+  <span class="prop">--sidebar-bg</span>: <span class="val">220 14% 100%</span>;
+  <span class="prop">--chat-bg</span>: <span class="val">220 12% 96%</span>;
+  <span class="prop">--message-user</span>: <span class="val">192 86% 46%</span>;
+  <span class="prop">--message-ai</span>: <span class="val">220 12% 92%</span>;
+  <span class="prop">--tool-status-bg</span>: <span class="val">192 86% 46% / 0.08</span>;
+}
+
+<span class="comment">/* Dark Mode */</span>
+<span class="prop">.dark</span> {
+  <span class="prop">--primary</span>: <span class="val">192 86% 46%</span>;          <span class="comment">/* 主色不变 */</span>
+  <span class="prop">--sidebar-bg</span>: <span class="val">220 16% 6%</span>;
+  <span class="prop">--chat-bg</span>: <span class="val">220 14% 8%</span>;
+  <span class="prop">--message-ai</span>: <span class="val">220 10% 18%</span>;
+  <span class="prop">--border</span>: <span class="val">220 12% 12%</span>;
+  <span class="prop">--muted-foreground</span>: <span class="val">220 6% 58%</span>;
+  <span class="prop">--destructive</span>: <span class="val">0 80% 48%</span>;
+}
+      </div>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
-import { Loader2, Globe, Terminal, FileText, Search, CornerDownLeft } from "lucide-react";
+import { Loader2, Globe, Terminal, FileText, Search, CornerDownLeft, ArrowDownToLine } from "lucide-react";
+import { computePosition, flip, offset } from "@floating-ui/dom";
 import type { Message } from "@/lib/types";
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -36,10 +37,80 @@ export function ChatArea({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const selectedTextRef = useRef("");
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const showPopover = useCallback((range: Range) => {
+    const el = popoverRef.current;
+    if (!el) return;
+
+    selectedTextRef.current = window.getSelection()?.toString().trim() || "";
+
+    const rect = range.getBoundingClientRect();
+    const virtualEl = { getBoundingClientRect: () => rect };
+
+    computePosition(virtualEl, el, {
+      placement: "top",
+      middleware: [flip(), offset(8)],
+    }).then(({ x, y }) => {
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+    });
+
+    el.style.display = "block";
+  }, []);
+
+  const hidePopover = useCallback(() => {
+    const el = popoverRef.current;
+    if (el) el.style.display = "none";
+    selectedTextRef.current = "";
+  }, []);
+
+  const handleBringToInput = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = selectedTextRef.current;
+    if (!text) return;
+    hidePopover();
+    setInput(text);
+    textareaRef.current?.focus();
+    setTimeout(() => {
+      window.getSelection()?.removeAllRanges();
+    }, 200);
+  }, [hidePopover]);
+
+  useEffect(() => {
+    const onMouseUp = (e: MouseEvent) => {
+      if (popoverRef.current && popoverRef.current.contains(e.target as Node)) return;
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+        hidePopover();
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      const container = messagesContainerRef.current;
+      if (!container || !container.contains(range.commonAncestorContainer)) {
+        hidePopover();
+        return;
+      }
+      showPopover(range);
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      if (popoverRef.current && popoverRef.current.contains(e.target as Node)) return;
+      hidePopover();
+    };
+    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("mousedown", onMouseDown);
+    return () => {
+      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [showPopover, hidePopover]);
 
   const handleSubmit = () => {
     if (!input.trim() || isLoading) return;
@@ -69,7 +140,7 @@ export function ChatArea({
         <span className="text-sm font-medium text-muted-foreground">对话</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 pb-20 flex flex-col gap-5">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-5 pb-20 flex flex-col gap-5">
         {messages.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -145,6 +216,20 @@ export function ChatArea({
           </div>
         </div>
       )}
+
+      <div
+        ref={popoverRef}
+        style={{ display: "none" }}
+        className="fixed z-50"
+      >
+        <button
+          onMouseDown={handleBringToInput}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-popover text-popover-foreground shadow-lg border border-border text-xs font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
+        >
+          <ArrowDownToLine className="w-3.5 h-3.5" />
+          带入对话框
+        </button>
+      </div>
 
       <div className="absolute bottom-4 left-5 right-5 flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
         <textarea
