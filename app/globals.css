@@ -1,82 +1,78 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 :root {
-  /* 橙红色系 - 亮色主题 */
   --background: 0 0% 100%;
-  --foreground: 20 14% 10%;
-
-  --card: 0 0% 100%;
-  --card-foreground: 20 14% 10%;
-
+  --foreground: 240 10% 3.9%;
+  --card: 240 4.8% 95.9%;
+  --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
-  --popover-foreground: 20 14% 10%;
-
-  --primary: 16 100% 50%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 16 30% 95%;
-  --secondary-foreground: 20 14% 10%;
-
-  --muted: 20 10% 96%;
-  --muted-foreground: 20 10% 40%;
-
-  --accent: 16 100% 97%;
-  --accent-foreground: 20 14% 10%;
-
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-
-  --border: 20 10% 90%;
-  --input: 20 10% 90%;
-  --ring: 16 100% 50%;
-
-  --radius: 0.5rem;
-
-  /* 侧边栏 */
-  --sidebar-width: 240px;
-  --sidebar-bg: 20 20% 98%;
-  --sidebar-border: 20 10% 90%;
-
-  /* 右边栏 */
-  --rightbar-width: 280px;
-  --rightbar-bg: 0 0% 100%;
-  --rightbar-border: 20 10% 90%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 199 89% 48%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 199 89% 48%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 199 89% 48%;
+  --radius: 0.625rem;
+  --sidebar-bg: 0 0% 100%;
+  --sidebar-border: 240 5.9% 90%;
+  --sidebar-hover: 240 4.8% 95%;
+  --chat-bg: 240 4.8% 96%;
+  --chat-border: 240 5.9% 90%;
+  --message-user: 199 89% 48%;
+  --message-user-fg: 0 0% 98%;
+  --message-ai: 240 4.8% 92%;
+  --message-ai-fg: 240 10% 3.9%;
+  --tool-status-bg: 199 89% 48% / 0.08;
+  --tool-status-border: 199 89% 48% / 0.2;
+  --tool-status-fg: 199 89% 48%;
+  --success: 160 84.1% 39.4%;
+  --warning: 45.4 93.4% 47.5%;
 }
 
 .dark {
-  --background: 20 14% 8%;
-  --foreground: 0 0% 95%;
-
-  --card: 20 14% 10%;
-  --card-foreground: 0 0% 95%;
-
-  --popover: 20 14% 10%;
-  --popover-foreground: 0 0% 95%;
-
-  --primary: 16 100% 55%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 20 14% 18%;
-  --secondary-foreground: 0 0% 95%;
-
-  --muted: 20 14% 15%;
-  --muted-foreground: 0 0% 60%;
-
-  --accent: 20 14% 15%;
-  --accent-foreground: 0 0% 95%;
-
-  --destructive: 0 62% 50%;
-  --destructive-foreground: 0 0% 95%;
-
-  --border: 20 14% 18%;
-  --input: 20 14% 18%;
-  --ring: 16 100% 55%;
-
-  --sidebar-bg: 20 14% 6%;
-  --sidebar-border: 20 14% 15%;
-
-  --rightbar-bg: 20 14% 8%;
-  --rightbar-border: 20 14% 15%;
+  --background: 240 6% 4%;
+  --foreground: 0 0% 98%;
+  --card: 240 5% 10%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 5% 10%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 199 89% 48%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 5% 17%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 5% 17%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 199 89% 48%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 199 89% 48%;
+  --sidebar-bg: 240 6% 6%;
+  --sidebar-border: 240 4% 16%;
+  --sidebar-hover: 240 5% 10%;
+  --chat-bg: 240 5% 8%;
+  --chat-border: 240 4% 16%;
+  --message-user: 199 89% 48%;
+  --message-user-fg: 0 0% 98%;
+  --message-ai: 240 5% 17%;
+  --message-ai-fg: 0 0% 98%;
+  --tool-status-bg: 199 89% 48% / 0.12;
+  --tool-status-border: 199 89% 48% / 0.2;
+  --tool-status-fg: 199 89% 48%;
+  --success: 160 84.1% 39.4%;
+  --warning: 45.4 93.4% 47.5%;
 }
 
 @theme inline {
@@ -84,6 +80,8 @@
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
@@ -97,96 +95,67 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
-  --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: var(--font-geist-mono);
-  --radius: var(--radius);
+  --color-sidebar-bg: hsl(var(--sidebar-bg));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-hover: hsl(var(--sidebar-hover));
+  --color-chat-bg: hsl(var(--chat-bg));
+  --color-chat-border: hsl(var(--chat-border));
+  --color-message-user: hsl(var(--message-user));
+  --color-message-user-fg: hsl(var(--message-user-fg));
+  --color-message-ai: hsl(var(--message-ai));
+  --color-message-ai-fg: hsl(var(--message-ai-fg));
+  --color-tool-status-bg: hsl(var(--tool-status-bg));
+  --color-tool-status-border: hsl(var(--tool-status-border));
+  --color-tool-status-fg: hsl(var(--tool-status-fg));
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --animate-wiggle: wiggle 0.6s ease-in-out infinite;
 }
 
-* {
-  border-color: hsl(var(--border));
-}
-
-body {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
-}
-
-/* 气泡消息样式 */
-.message-bubble {
-  border-radius: 1rem;
-  padding: 0.75rem 1rem;
-  max-width: 85%;
-}
-
-.message-bubble-user {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  margin-left: auto;
-}
-
-.message-bubble-assistant {
-  background: hsl(var(--muted));
-  color: hsl(var(--foreground));
-}
-
-/* 数字伙伴卡片 */
-.buddy-card {
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-  padding: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.buddy-card:hover {
-  border-color: hsl(var(--primary));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.buddy-card-selected {
-  border-color: hsl(var(--primary));
-  background: hsl(var(--accent));
-}
-
-/* 打字光标动画 */
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-.typing-cursor::after {
-  content: '▊';
-  animation: blink 1s infinite;
-  color: hsl(var(--primary));
-}
-
-/* 工具图标动画 */
 @keyframes wiggle {
   0%, 100% { transform: rotate(0deg); }
   25% { transform: rotate(-8deg); }
   75% { transform: rotate(8deg); }
 }
 
-.animate-wiggle {
-  animation: wiggle 0.6s ease-in-out infinite;
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
+
+.typing-cursor::after {
+  content: "\258A";
+  animation: blink 1s infinite;
+  color: hsl(var(--primary));
+}
+
+@keyframes message-appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-appear {
+  animation: message-appear 0.3s ease-out;
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: "Inter", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
