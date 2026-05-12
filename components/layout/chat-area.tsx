@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Loader2, Globe, Terminal, FileText, Search, ArrowUp, ArrowDownToLine, Square, RotateCcw, Check } from "lucide-react";
 import { computePosition, flip, offset } from "@floating-ui/dom";
+import { useScrollHide } from "@/hooks/use-scroll-hide";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { SquircleContainer } from "@/components/ui/squircle-container";
 import type { Message, TaskStatus } from "@/lib/types";
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -134,6 +136,7 @@ export function ChatArea({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const scrollHideRef = useScrollHide();
   const popoverRef = useRef<HTMLDivElement>(null);
   const selectedTextRef = useRef("");
 
@@ -235,7 +238,10 @@ export function ChatArea({
   const isTaskPending = activeTask?.status === "pending";
 
   return (
-    <div className={`flex flex-col bg-chat-bg rounded-2xl overflow-hidden relative ${className ?? ""}`}>
+    <SquircleContainer
+      cornerRadius={16}
+      className={`flex flex-col bg-chat-bg overflow-hidden relative ${className ?? ""}`}
+    >
       <div className="flex items-center justify-between px-5 py-3.5">
         <span className="text-sm font-medium text-muted-foreground">
           {isTaskRunning ? "任务执行中" : isTaskFailed ? "任务失败" : "对话"}
@@ -248,7 +254,7 @@ export function ChatArea({
       </div>
 
       {/* 消息列表始终显示 */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-5 pb-20 flex flex-col gap-5">
+      <div ref={(el) => { messagesContainerRef.current = el; scrollHideRef.current = el; }} className="flex-1 overflow-y-auto p-5 pb-20 flex flex-col gap-5">
         {messages.length === 0 && !isTaskRunning && !isTaskFailed && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -285,9 +291,9 @@ export function ChatArea({
 
             <div className={msg.role === "user" ? "" : "flex-1 min-w-0"}>
               {msg.role === "user" ? (
-                <div className="message-appear px-4 py-3 bg-message-user text-message-user-fg rounded-2xl rounded-tr-sm text-sm leading-relaxed">
+                <SquircleContainer cornerRadius={16} className="message-appear px-4 py-3 bg-message-user text-message-user-fg text-sm leading-relaxed" style={{ borderTopRightRadius: 0 }}>
                   {msg.content}
-                </div>
+                </SquircleContainer>
               ) : msg.toolStatus ? (
                 <div className="message-appear flex items-center gap-2 px-3.5 py-2 bg-tool-status-bg border border-tool-status-border rounded-lg text-sm text-tool-status-fg">
                   {getToolIcon(msg.toolStatus)}
@@ -299,9 +305,9 @@ export function ChatArea({
                   <span>思考中...</span>
                 </div>
               ) : msg.content ? (
-                <div className={`message-appear px-4 py-3 bg-message-ai text-message-ai-fg rounded-2xl rounded-bl-sm text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert ${msg.isStreaming ? "typing-cursor" : ""}`}>
+                <SquircleContainer cornerRadius={16} className={`message-appear px-4 py-3 bg-message-ai text-message-ai-fg text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert ${msg.isStreaming ? "typing-cursor" : ""}`} style={{ borderBottomLeftRadius: 0 }}>
                   <MarkdownRenderer content={msg.content} />
-                </div>
+                </SquircleContainer>
               ) : null}
             </div>
           </div>
@@ -356,7 +362,7 @@ export function ChatArea({
 
       {/* 底部区域：pending/正常时为输入框，running时为状态面板，failed时为重试 */}
       {isTaskRunning ? (
-        <div className="absolute bottom-4 left-5 right-5 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-4 py-3 shadow-sm">
+        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-5 right-5 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
               {activeTask.buddyAvatar ?? activeTask.buddyName?.[0] ?? "?"}
@@ -376,9 +382,9 @@ export function ChatArea({
               停止
             </button>
           </div>
-        </div>
+        </SquircleContainer>
       ) : isTaskFailed ? (
-        <div className="absolute bottom-4 left-5 right-5 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-4 py-3 shadow-sm">
+        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-5 right-5 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive text-sm font-bold flex-shrink-0">
               {activeTask.buddyAvatar ?? activeTask.buddyName?.[0] ?? "?"}
@@ -405,9 +411,9 @@ export function ChatArea({
               </button>
             </div>
           </div>
-        </div>
+        </SquircleContainer>
       ) : (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           <textarea
             ref={textareaRef}
             value={input}
@@ -424,8 +430,8 @@ export function ChatArea({
           >
             <ArrowUp className="w-4 h-4" />
           </button>
-        </div>
+        </SquircleContainer>
       )}
-    </div>
+    </SquircleContainer>
   );
 }

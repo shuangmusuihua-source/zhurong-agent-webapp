@@ -170,8 +170,21 @@ code, pre, .font-mono {
   font-family: "DingTalk JinBuTi", var(--font-puhuiti), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Scrollbar */
+/* Scrollbar - only visible while scrolling */
+.overflow-y-auto,
+.overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.overflow-y-auto.is-scrolling,
+.overflow-auto.is-scrolling {
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+.overflow-y-auto.is-scrolling::-webkit-scrollbar-thumb,
+.overflow-auto.is-scrolling::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
