@@ -9,6 +9,8 @@ import {
   Sun,
   Settings,
   ChevronDown,
+  Home,
+  Trash2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
@@ -23,15 +25,21 @@ import type { Workspace } from "@/lib/types";
 export function Sidebar({
   workspaces,
   activeWorkspaceId,
+  activeView,
   onWorkspaceSelect,
+  onHomeSelect,
   onWorkspaceCreate,
+  onWorkspaceDelete,
   collapsed,
   onToggleCollapse,
 }: {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
+  activeView: "home" | "workspace";
   onWorkspaceSelect: (id: string) => void;
+  onHomeSelect: () => void;
   onWorkspaceCreate: () => void;
+  onWorkspaceDelete?: (id: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
 }) {
@@ -68,33 +76,57 @@ export function Sidebar({
       </div>
 
       <div className="flex-1 p-3 overflow-y-auto">
+        <button
+          onClick={onHomeSelect}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors mb-1 ${
+            collapsed ? "justify-center px-0" : ""
+          } ${
+            activeView === "home"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-sidebar-hover hover:text-foreground"
+          }`}
+          title={collapsed ? "首页" : undefined}
+        >
+          <Home className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <span>首页</span>}
+        </button>
+
         {!collapsed && (
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-2 mt-3">
             工作区
           </div>
         )}
         {workspaces.map((ws) => (
-          <button
+          <div
             key={ws.id}
-            onClick={() => onWorkspaceSelect(ws.id)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors mb-0.5 ${
-              collapsed ? "justify-center px-0" : ""
-            } ${
-              ws.id === activeWorkspaceId
+            className={`group flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors mb-0.5 cursor-pointer ${
+              ws.id === activeWorkspaceId && activeView === "workspace"
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-sidebar-hover hover:text-foreground"
             }`}
-            title={collapsed ? ws.name : undefined}
+            onClick={() => onWorkspaceSelect(ws.id)}
           >
             <span
               className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                ws.id === activeWorkspaceId
+                ws.id === activeWorkspaceId && activeView === "workspace"
                   ? "bg-primary shadow-[0_0_8px_rgba(8,145,178,0.5)]"
                   : "bg-muted-foreground"
               }`}
             />
-            {!collapsed && <span className="truncate">{ws.name}</span>}
-          </button>
+            <span className="truncate flex-1 min-w-0">{ws.name}</span>
+            {onWorkspaceDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onWorkspaceDelete(ws.id);
+                }}
+                className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                title="删除工作区"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         ))}
 
         <button

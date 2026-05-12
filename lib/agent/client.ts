@@ -1,4 +1,4 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query, AbortError } from "@anthropic-ai/claude-agent-sdk";
 import type {
   SDKMessage,
   SDKResultMessage,
@@ -13,13 +13,14 @@ export interface AgentOptions {
   allowedTools?: string[];
   cwd?: string;
   model?: string;
+  abortController?: AbortController;
 }
 
-// 细粒度流式事件类型
 export type StreamEvent =
   | { type: "text_delta"; text: string }
   | { type: "thinking_delta"; thinking: string }
-  | { type: "tool_use"; toolName: string }
+  | { type: "tool_use"; toolName: string; toolInput?: Record<string, unknown> }
+  | { type: "tool_use_complete"; toolName: string; toolInput: Record<string, unknown> }
   | { type: "message"; data: SDKMessage }
   | { type: "complete"; agentSessionId: string }
   | { type: "error"; message: string };
@@ -28,8 +29,11 @@ export async function* streamAgentResponse(
   options: AgentOptions
 ): AsyncGenerator<StreamEvent> {
   try {
-    // 创建 WebSearch MCP Server
     const webSearchServer = createWebSearchMcpServer();
+
+    // 追踪当前 content block 的累积状态
+    let currentToolName = "";
+    let currentToolInputJson = "";
 
     for await (const message of query({
       prompt: options.prompt,
@@ -45,7 +49,6 @@ export async function* streamAgentResponse(
           "Write",
           "mcp__web-search__WebSearch",
         ],
-        // 添加 WebSearch MCP Server
         mcpServers: {
           "web-search": webSearchServer,
         },
@@ -54,9 +57,9 @@ export async function* streamAgentResponse(
         cwd: options.cwd ?? process.cwd(),
         model: options.model ?? process.env.ANTHROPIC_MODEL ?? "astron-code-latest",
         includePartialMessages: true,
+        abortController: options.abortController,
       },
     })) {
-      // 处理流式事件
       if (message.type === "stream_event") {
         const partialMsg = message as SDKPartialAssistantMessage;
         const event = partialMsg.event;
@@ -64,8 +67,10 @@ export async function* streamAgentResponse(
         if (event.type === "content_block_start") {
           const block = event.content_block as any;
           if (block.type === "tool_use" || block.type === "mcp_tool_use") {
-            console.log(`[Agent] 工具调用: ${block.name}`, block.input);
-            yield { type: "tool_use", toolName: block.name };
+            currentToolName = block.name;
+            currentToolInputJson = "";
+            console.log(`[Agent] 工具调用开始: ${block.name}`);
+            yield { type: "tool_use", toolName: block.name, toolInput: block.input };
           }
         } else if (event.type === "content_block_delta") {
           const delta = event.delta;
@@ -74,12 +79,27 @@ export async function* streamAgentResponse(
             yield { type: "text_delta", text: delta.text };
           } else if (delta.type === "thinking_delta") {
             yield { type: "thinking_delta", thinking: delta.thinking };
+          } else if (delta.type === "input_json_delta") {
+            // 累积工具输入 JSON
+            currentToolInputJson += delta.partial_json;
           }
+        } else if (event.type === "content_block_stop") {
+          // 工具输入完成，发出完整事件
+          if (currentToolName && currentToolInputJson) {
+            try {
+              const fullInput = JSON.parse(currentToolInputJson);
+              console.log(`[Agent] 工具调用完成: ${currentToolName}`, fullInput);
+              yield { type: "tool_use_complete", toolName: currentToolName, toolInput: fullInput };
+            } catch {
+              console.log(`[Agent] 工具输入解析失败: ${currentToolName}`);
+            }
+          }
+          currentToolName = "";
+          currentToolInputJson = "";
         }
         continue;
       }
 
-      // 处理完成
       if (message.type === "result") {
         const resultMsg = message as SDKResultMessage;
         yield {
@@ -89,6 +109,7 @@ export async function* streamAgentResponse(
       }
     }
   } catch (error) {
+    if (error instanceof AbortError) return;
     yield {
       type: "error",
       message: error instanceof Error ? error.message : "Unknown error",

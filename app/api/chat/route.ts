@@ -1,8 +1,10 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth/auth-server";
 import { streamAgentResponse, StreamEvent } from "@/lib/agent/client";
+import { AbortError } from "@anthropic-ai/claude-agent-sdk";
+import { activeTasks } from "@/lib/agent/active-tasks";
 import { db } from "@/lib/db";
-import { conversation, message, workspace } from "@/lib/db/schema";
+import { conversation, message, workspace, task, digitalBuddy, product } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -18,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { prompt, conversationId: existingConversationId, skills, workspaceId } = body;
+    const { prompt, conversationId: existingConversationId, workspaceId } = body;
 
     if (!prompt) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
@@ -28,13 +30,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (!workspaceId) {
-      return new Response(JSON.stringify({ error: "Workspace is required. Please create a workspace first." }), {
+      return new Response(JSON.stringify({ error: "Workspace is required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // Verify user has access to the workspace
     const userWorkspace = await db
       .select()
       .from(workspace)
@@ -47,6 +48,20 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     }
+
+    // 查找当前工作区的 running task
+    const runningTasks = await db
+      .select({
+        task: task,
+        buddy: digitalBuddy,
+      })
+      .from(task)
+      .leftJoin(digitalBuddy, eq(task.buddyId, digitalBuddy.id))
+      .where(and(eq(task.workspaceId, workspaceId), inArray(task.status, ["running", "pending"])))
+      .limit(1);
+
+    const currentTask = runningTasks[0];
+    const skillId = currentTask?.buddy?.skillId;
 
     let currentConversationId = existingConversationId;
     let agentSessionId: string | undefined;
@@ -71,7 +86,16 @@ export async function POST(req: NextRequest) {
         id: currentConversationId,
         workspaceId: workspaceId,
         title: prompt.slice(0, 100),
+        activeBuddyId: currentTask?.task?.buddyId ?? null,
       });
+    }
+
+    // 更新 task 的 conversationId
+    if (currentTask && !currentTask.task.conversationId) {
+      await db
+        .update(task)
+        .set({ conversationId: currentConversationId })
+        .where(eq(task.id, currentTask.task.id));
     }
 
     await db.insert(message).values({
@@ -84,26 +108,114 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder();
     let assistantContent = "";
     let controllerClosed = false;
+    const createdProductPaths = new Set<string>();
+
+    // 注册活跃任务
+    const abortController = new AbortController();
+    if (currentTask) {
+      // pending → running
+      if (currentTask.task.status === "pending") {
+        await db
+          .update(task)
+          .set({ status: "running", updatedAt: new Date() })
+          .where(eq(task.id, currentTask.task.id));
+        currentTask.task.status = "running";
+      }
+      activeTasks.set(currentTask.task.id, {
+        abortController,
+        agentSessionId: currentTask.task.agentSessionId ?? undefined,
+      });
+    }
 
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // 发送 task_started 事件
+          if (currentTask) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "task_started",
+                  taskId: currentTask.task.id,
+                  buddyName: currentTask.buddy?.name,
+                  buddyAvatar: currentTask.buddy?.avatar,
+                  skillId,
+                })}\n\n`
+              )
+            );
+          }
+
           for await (const event of streamAgentResponse({
             prompt,
             sessionId: agentSessionId,
-            skills,
+            skills: skillId ? [skillId] : undefined,
+            abortController,
           })) {
-            // 累积文本用于存储
             if (event.type === "text_delta") {
               assistantContent += event.text;
             }
 
-            // 发送事件
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+            // 识别 Write/Edit 工具调用完成，创建产物记录
+            if (event.type === "tool_use_complete" && (event.toolName === "Write" || event.toolName === "Edit") && event.toolInput) {
+              const filePath = (event.toolInput.file_path ?? event.toolInput.path) as string;
+              console.log(`[Product] ${event.toolName} complete, filePath:`, filePath);
+              if (filePath && currentTask && !createdProductPaths.has(filePath)) {
+                createdProductPaths.add(filePath);
+                const fileName = filePath.split("/").pop() ?? filePath;
+                const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+                const productType = ext === "html" || ext === "htm" ? "slides"
+                  : ext === "pptx" || ext === "ppt" ? "slides"
+                  : ext === "md" || ext === "docx" || ext === "pdf" ? "document"
+                  : ext === "py" || ext === "js" || ext === "ts" || ext === "tsx" ? "code"
+                  : ext === "png" || ext === "jpg" || ext === "svg" ? "image"
+                  : "document";
 
-            // 为 complete 事件添加 conversationId
+                const productId = nanoid();
+                await db.insert(product).values({
+                  id: productId,
+                  workspaceId: workspaceId,
+                  taskId: currentTask.task.id,
+                  conversationId: currentConversationId!,
+                  type: productType,
+                  name: fileName,
+                  content: filePath,
+                  status: "generating",
+                });
+
+                if (!controllerClosed) {
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({
+                        type: "product_created",
+                        productId,
+                        name: fileName,
+                        productType,
+                        taskId: currentTask.task.id,
+                        status: "generating",
+                      })}\n\n`
+                    )
+                  );
+                }
+              }
+            }
+
+            // 识别 AskUserQuestion 工具调用，发送问题到前端
+            if (event.type === "tool_use_complete" && event.toolName === "AskUserQuestion" && event.toolInput) {
+              if (!controllerClosed) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: "ask_user",
+                      questions: event.toolInput.questions,
+                      title: event.toolInput.title,
+                    })}\n\n`
+                  )
+                );
+              }
+            }
+
+            // complete 事件最后处理，关闭流
             if (event.type === "complete") {
-              // 更新数据库
               await db
                 .update(conversation)
                 .set({
@@ -112,7 +224,6 @@ export async function POST(req: NextRequest) {
                 })
                 .where(eq(conversation.id, currentConversationId!));
 
-              // 保存助手消息
               if (assistantContent) {
                 await db.insert(message).values({
                   id: nanoid(),
@@ -122,7 +233,31 @@ export async function POST(req: NextRequest) {
                 });
               }
 
-              // 发送带 conversationId 的 complete 事件
+              // 更新 task 状态为 completed
+              if (currentTask) {
+                await db
+                  .update(task)
+                  .set({ status: "completed", agentSessionId: event.agentSessionId, updatedAt: new Date() })
+                  .where(eq(task.id, currentTask.task.id));
+
+                // 更新该任务所有产物为 completed
+                await db
+                  .update(product)
+                  .set({ status: "completed" })
+                  .where(eq(product.taskId, currentTask.task.id));
+
+                activeTasks.delete(currentTask.task.id);
+
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: "task_completed",
+                      taskId: currentTask.task.id,
+                    })}\n\n`
+                  )
+                );
+              }
+
               const completeEvent: StreamEvent & { conversationId: string } = {
                 ...event,
                 conversationId: currentConversationId!,
@@ -133,18 +268,57 @@ export async function POST(req: NextRequest) {
               controllerClosed = true;
               return;
             }
+
+            // 其他事件正常转发
+            if (!controllerClosed) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+            }
           }
         } catch (error) {
-          console.error("Stream error:", error);
-          if (!controllerClosed) {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: "error",
-                  message: error instanceof Error ? error.message : "Stream error",
-                })}\n\n`
-              )
-            );
+          // 中止是用户主动停止，stop route 已处理状态更新
+          if (error instanceof AbortError) {
+            if (!controllerClosed) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: "task_failed",
+                    taskId: currentTask?.task.id,
+                  })}\n\n`
+                )
+              );
+            }
+          } else {
+            console.error("Stream error:", error);
+
+            if (currentTask) {
+              await db
+                .update(task)
+                .set({ status: "failed", updatedAt: new Date() })
+                .where(eq(task.id, currentTask.task.id));
+
+              activeTasks.delete(currentTask.task.id);
+
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: "task_failed",
+                    taskId: currentTask.task.id,
+                    message: error instanceof Error ? error.message : "Stream error",
+                  })}\n\n`
+                )
+              );
+            }
+
+            if (!controllerClosed) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: "error",
+                    message: error instanceof Error ? error.message : "Stream error",
+                  })}\n\n`
+                )
+              );
+            }
           }
         } finally {
           if (!controllerClosed) {
@@ -187,7 +361,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get("workspaceId");
 
-    // Get user's workspaces
     const userWorkspaces = await db
       .select()
       .from(workspace)
@@ -201,7 +374,6 @@ export async function GET(req: NextRequest) {
 
     const workspaceIds = userWorkspaces.map((w) => w.id);
 
-    // Query conversations
     let conversations;
     if (workspaceId) {
       conversations = await db

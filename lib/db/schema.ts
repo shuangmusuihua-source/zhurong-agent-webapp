@@ -71,6 +71,18 @@ export const digitalBuddy = sqliteTable("digital_buddy", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
+// 任务（Skill 执行实例）
+export const task = sqliteTable("task", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspace.id),
+  buddyId: text("buddy_id").notNull().references(() => digitalBuddy.id),
+  conversationId: text("conversation_id").references(() => conversation.id),
+  status: text("status").notNull().default("running"), // 'running' | 'completed' | 'failed'
+  agentSessionId: text("agent_session_id"), // Claude Agent Session ID，用于 resume
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
 // 对话
 export const conversation = sqliteTable("conversation", {
   id: text("id").primaryKey(),
@@ -97,6 +109,7 @@ export const message = sqliteTable("message", {
 export const product = sqliteTable("product", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull().references(() => workspace.id),
+  taskId: text("task_id").references(() => task.id),
   conversationId: text("conversation_id").references(() => conversation.id),
   type: text("type").notNull(), // 'slides' | 'document' | 'code' | 'image'
   name: text("name").notNull(),
