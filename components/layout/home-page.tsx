@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, ArrowUp } from "lucide-react";
 import type { DigitalBuddy, Task } from "@/lib/types";
 import { nanoid } from "nanoid";
 
@@ -135,8 +135,8 @@ export function HomePage({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
-      <div className="flex-1 overflow-y-auto p-8">
+    <div className="flex-1 flex flex-col min-w-0 relative">
+      <div className="flex-1 overflow-y-auto p-8 pb-20">
         <div className="max-w-3xl mx-auto">
           <div className="mb-8">
             <h1 className="text-2xl font-semibold mb-1">数字伙伴</h1>
@@ -250,35 +250,33 @@ export function HomePage({
         </div>
       </div>
 
-      <div className="border-t border-border p-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="描述你的需求，我来推荐合适的伙伴..."
-              className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-secondary text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || sending}
-              className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-        </div>
+      <div className="p-4">
+        <div className="mx-auto w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+        <textarea
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            e.target.style.height = "auto";
+            e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          placeholder="描述你的需求，我来推荐合适的伙伴..."
+          rows={1}
+          className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!input.trim() || sending}
+          className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+        >
+          <ArrowUp className="w-4 h-4" />
+        </button>
+      </div>
       </div>
     </div>
   );

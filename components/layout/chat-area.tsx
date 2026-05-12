@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Loader2, Globe, Terminal, FileText, Search, CornerDownLeft, ArrowDownToLine, Square, RotateCcw, Check } from "lucide-react";
+import { Loader2, Globe, Terminal, FileText, Search, ArrowUp, ArrowDownToLine, Square, RotateCcw, Check } from "lucide-react";
 import { computePosition, flip, offset } from "@floating-ui/dom";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import type { Message, TaskStatus } from "@/lib/types";
@@ -407,7 +407,7 @@ export function ChatArea({
           </div>
         </div>
       ) : (
-        <div className="absolute bottom-4 left-5 right-5 flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           <textarea
             ref={textareaRef}
             value={input}
@@ -422,7 +422,7 @@ export function ChatArea({
             disabled={!input.trim() || isLoading}
             className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
           >
-            <CornerDownLeft className="w-4 h-4" />
+            <ArrowUp className="w-4 h-4" />
           </button>
         </div>
       )}
