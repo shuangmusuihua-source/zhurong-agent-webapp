@@ -279,7 +279,7 @@ export function ChatArea({
               </div>
             )}
             {msg.role === "assistant" && (
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-teal-400 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 via-teal-400 to-green-400 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                 AI
               </div>
             )}
