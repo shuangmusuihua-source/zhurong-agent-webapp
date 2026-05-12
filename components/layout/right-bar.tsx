@@ -1,6 +1,8 @@
 "use client";
 
 import { ChevronRight, ChevronLeft, FileText, Download, Eye, Loader2, CheckCircle2, XCircle, Clock, Sparkles, Trash2 } from "lucide-react";
+import { SquircleContainer } from "@/components/ui/squircle-container";
+import { useScrollHide } from "@/hooks/use-scroll-hide";
 import type { Product, ContextFile } from "@/lib/types";
 
 interface TaskItem {
@@ -39,21 +41,22 @@ export function RightBar({
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
+  const scrollRef = useScrollHide();
   if (collapsed) {
     return (
-      <div className="w-12 flex flex-col items-center py-3 bg-sidebar-bg rounded-2xl">
+      <SquircleContainer cornerRadius={16} className="w-12 flex flex-col items-center py-3 bg-sidebar-bg">
         <button
           onClick={onToggleCollapse}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-      </div>
+      </SquircleContainer>
     );
   }
 
   return (
-    <div className="w-[220px] flex flex-col bg-sidebar-bg rounded-2xl overflow-hidden">
+    <SquircleContainer cornerRadius={16} className="w-[220px] flex flex-col bg-sidebar-bg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3.5">
         <span className="text-sm font-medium text-muted-foreground">详情</span>
         <button
@@ -109,7 +112,7 @@ export function RightBar({
       <div className="mx-3 border-t border-border" />
 
       {/* 产物列表 */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2">
         <p className="text-xs text-muted-foreground mb-2 px-1">产物</p>
         {products.length === 0 ? (
           <p className="text-xs text-muted-foreground px-1 py-2">暂无产物</p>
@@ -191,6 +194,6 @@ export function RightBar({
           </div>
         </>
       )}
-    </div>
+    </SquircleContainer>
   );
 }

@@ -20,6 +20,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SquircleContainer } from "@/components/ui/squircle-container";
+import { useScrollHide } from "@/hooks/use-scroll-hide";
 import type { Workspace } from "@/lib/types";
 
 export function Sidebar({
@@ -44,10 +46,12 @@ export function Sidebar({
   onToggleCollapse: () => void;
 }) {
   const { theme, setTheme } = useTheme();
+  const scrollRef = useScrollHide();
 
   return (
-    <div
-      className={`flex flex-col bg-sidebar-bg rounded-2xl overflow-hidden transition-all duration-300 relative ${
+    <SquircleContainer
+      cornerRadius={16}
+      className={`flex flex-col bg-sidebar-bg overflow-hidden transition-all duration-300 relative ${
         collapsed ? "w-[60px]" : "w-[240px]"
       }`}
     >
@@ -59,7 +63,7 @@ export function Sidebar({
         {!collapsed && (
           <img src="/logo.svg" alt="大象 Agent" className="h-10 flex-shrink-0" />
         )}
-        {!collapsed && <span className="text-base font-semibold font-logo tracking-wider text-[#4BBAAD]">大象Agent</span>}
+        {!collapsed && <span className="text-lg font-semibold font-logo tracking-wider bg-gradient-to-r from-emerald-500 via-teal-400 to-green-400 bg-clip-text text-transparent">大象Agent</span>}
         <button
           onClick={onToggleCollapse}
           className={`w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0 ${
@@ -75,7 +79,7 @@ export function Sidebar({
         </button>
       </div>
 
-      <div className="flex-1 p-3 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 p-3 overflow-y-auto">
         <button
           onClick={onHomeSelect}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors mb-1 ${
@@ -181,6 +185,6 @@ export function Sidebar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </SquircleContainer>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Loader2, ArrowUp } from "lucide-react";
+import { SquircleContainer } from "@/components/ui/squircle-container";
+import { useScrollHide } from "@/hooks/use-scroll-hide";
 import type { DigitalBuddy, Task } from "@/lib/types";
 import { nanoid } from "nanoid";
 
@@ -26,6 +28,7 @@ export function HomePage({
   const [recommendedBuddies, setRecommendedBuddies] = useState<DigitalBuddy[]>([]);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useScrollHide();
 
   useEffect(() => {
     async function loadData() {
@@ -136,7 +139,7 @@ export function HomePage({
 
   return (
     <div className="flex-1 flex flex-col min-w-0 relative">
-      <div className="flex-1 overflow-y-auto p-8 pb-20">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 pb-20">
         <div className="max-w-3xl mx-auto">
           <div className="mb-8">
             <h1 className="text-2xl font-semibold mb-1">数字伙伴</h1>
@@ -145,35 +148,40 @@ export function HomePage({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-stretch">
             {buddies.map((buddy) => (
               <button
                 key={buddy.id}
                 onClick={() => onSelectBuddy(buddy)}
-                className="flex flex-col items-start p-5 rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/5 transition-all text-left group"
+                className="text-left w-full h-full"
               >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-lg font-bold mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-colors">
-                  {buddy.name[0]}
-                </div>
-                <h3 className="text-sm font-semibold mb-1">{buddy.name}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {buddy.description}
-                </p>
-                {(() => {
-                  const tags = typeof buddy.tags === "string" ? JSON.parse(buddy.tags as string) : buddy.tags;
-                  return tags && tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {tags.map((tag: string) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 rounded-md bg-secondary text-[11px] text-muted-foreground"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  );
-                })()}
+                <SquircleContainer
+                  cornerRadius={16}
+                  className="flex flex-col items-start p-5 bg-secondary/50 hover:bg-primary/5 transition-all text-left group h-full"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-lg font-bold mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-colors">
+                    {buddy.name[0]}
+                  </div>
+                  <h3 className="text-sm font-semibold mb-1">{buddy.name}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {buddy.description}
+                  </p>
+                  {(() => {
+                    const tags = typeof buddy.tags === "string" ? JSON.parse(buddy.tags as string) : buddy.tags;
+                    return tags && tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {tags.map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="px-2 py-0.5 rounded-md bg-secondary text-[11px] text-muted-foreground"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </SquircleContainer>
               </button>
             ))}
           </div>
@@ -250,8 +258,7 @@ export function HomePage({
         </div>
       </div>
 
-      <div className="p-4">
-        <div className="mx-auto w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 rounded-2xl px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+      <SquircleContainer cornerRadius={16} className="mx-auto w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
         <textarea
           value={input}
           onChange={(e) => {
@@ -276,8 +283,7 @@ export function HomePage({
         >
           <ArrowUp className="w-4 h-4" />
         </button>
-      </div>
-      </div>
+      </SquircleContainer>
     </div>
   );
 }
