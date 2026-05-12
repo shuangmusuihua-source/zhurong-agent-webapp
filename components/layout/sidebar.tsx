@@ -63,7 +63,7 @@ export function Sidebar({
         {!collapsed && (
           <img src="/logo.svg" alt="大象 Agent" className="h-10 flex-shrink-0" />
         )}
-        {!collapsed && <span className="text-base font-semibold font-logo tracking-wider text-[#4BBAAD]">大象Agent</span>}
+        {!collapsed && <span className="text-lg font-semibold font-logo tracking-wider bg-gradient-to-r from-emerald-500 via-teal-400 to-green-400 bg-clip-text text-transparent">大象Agent</span>}
         <button
           onClick={onToggleCollapse}
           className={`w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0 ${
