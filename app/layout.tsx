@@ -3,7 +3,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "祝融 Agent",
+  title: "大象 Agent",
   description: "AI 智能助手",
 };
 

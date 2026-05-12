@@ -57,9 +57,8 @@ export function Sidebar({
         }`}
       >
         {!collapsed && (
-          <img src="/logo.svg" alt="祝融" className="w-10 h-10 rounded-lg flex-shrink-0" />
+          <img src="/logo.svg" alt="大象 Agent" className="h-10 flex-shrink-0" />
         )}
-        {!collapsed && <span className="text-sm font-semibold">祝融 Agent</span>}
         <button
           onClick={onToggleCollapse}
           className={`w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0 ${
