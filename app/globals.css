@@ -3,74 +3,74 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-  --card: 240 4.8% 95.9%;
-  --card-foreground: 240 10% 3.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --primary: 199 89% 48%;
+  --background: 43 29% 95%;
+  --foreground: 60 3% 8%;
+  --card: 40 27% 97%;
+  --card-foreground: 60 3% 8%;
+  --popover: 40 27% 97%;
+  --popover-foreground: 60 3% 8%;
+  --primary: 216 55% 24%;
   --primary-foreground: 0 0% 98%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --accent: 199 89% 48%;
+  --secondary: 43 21% 89%;
+  --secondary-foreground: 60 3% 8%;
+  --muted: 43 21% 89%;
+  --muted-foreground: 36 5% 30%;
+  --accent: 212 51% 36%;
   --accent-foreground: 0 0% 98%;
-  --destructive: 0 84.2% 60.2%;
+  --destructive: 0 56% 45%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 199 89% 48%;
-  --radius: 0.625rem;
-  --sidebar-bg: 0 0% 100%;
-  --sidebar-border: 240 5.9% 90%;
-  --sidebar-hover: 240 4.8% 95%;
-  --chat-bg: 240 4.8% 96%;
-  --chat-border: 240 5.9% 90%;
-  --message-user: 199 89% 48%;
+  --border: 43 21% 89%;
+  --input: 43 21% 89%;
+  --ring: 216 55% 24%;
+  --radius: 0.5rem;
+  --sidebar-bg: 40 27% 97%;
+  --sidebar-border: 43 21% 89%;
+  --sidebar-hover: 43 29% 93%;
+  --chat-bg: 40 27% 97%;
+  --chat-border: 43 21% 89%;
+  --message-user: 212 51% 36%;
   --message-user-fg: 0 0% 98%;
-  --message-ai: 240 4.8% 92%;
-  --message-ai-fg: 240 10% 3.9%;
-  --tool-status-bg: 199 89% 48% / 0.08;
-  --tool-status-border: 199 89% 48% / 0.2;
-  --tool-status-fg: 199 89% 48%;
+  --message-ai: 43 21% 89%;
+  --message-ai-fg: 60 3% 8%;
+  --tool-status-bg: 216 55% 24% / 0.08;
+  --tool-status-border: 216 55% 24% / 0.18;
+  --tool-status-fg: 216 55% 24%;
   --success: 160 84.1% 39.4%;
   --warning: 45.4 93.4% 47.5%;
 }
 
 .dark {
-  --background: 240 6% 4%;
-  --foreground: 0 0% 98%;
-  --card: 240 5% 10%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 5% 10%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 199 89% 48%;
+  --background: 60 3% 8%;
+  --foreground: 43 10% 92%;
+  --card: 40 3% 14%;
+  --card-foreground: 43 10% 92%;
+  --popover: 40 3% 14%;
+  --popover-foreground: 43 10% 92%;
+  --primary: 212 51% 52%;
   --primary-foreground: 0 0% 98%;
-  --secondary: 240 5% 17%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 5% 17%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 199 89% 48%;
+  --secondary: 40 3% 14%;
+  --secondary-foreground: 43 10% 92%;
+  --muted: 40 3% 14%;
+  --muted-foreground: 36 5% 55%;
+  --accent: 212 51% 52%;
   --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 56% 45%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 4% 16%;
-  --input: 240 4% 16%;
-  --ring: 199 89% 48%;
-  --sidebar-bg: 240 6% 6%;
-  --sidebar-border: 240 4% 16%;
-  --sidebar-hover: 240 5% 10%;
-  --chat-bg: 240 5% 8%;
-  --chat-border: 240 4% 16%;
-  --message-user: 199 89% 48%;
+  --border: 40 3% 20%;
+  --input: 40 3% 20%;
+  --ring: 212 51% 52%;
+  --sidebar-bg: 60 3% 6%;
+  --sidebar-border: 40 3% 20%;
+  --sidebar-hover: 40 3% 14%;
+  --chat-bg: 60 3% 8%;
+  --chat-border: 40 3% 20%;
+  --message-user: 212 51% 36%;
   --message-user-fg: 0 0% 98%;
-  --message-ai: 240 5% 17%;
-  --message-ai-fg: 0 0% 98%;
-  --tool-status-bg: 199 89% 48% / 0.12;
-  --tool-status-border: 199 89% 48% / 0.2;
-  --tool-status-fg: 199 89% 48%;
+  --message-ai: 40 3% 14%;
+  --message-ai-fg: 43 10% 92%;
+  --tool-status-bg: 212 51% 52% / 0.12;
+  --tool-status-border: 212 51% 52% / 0.22;
+  --tool-status-fg: 212 51% 52%;
   --success: 160 84.1% 39.4%;
   --warning: 45.4 93.4% 47.5%;
 }
@@ -151,7 +151,23 @@
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: "Inter", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-puhuiti), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-puhuiti), -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+}
+
+.font-logo {
+  font-family: "DingTalk JinBuTi", var(--font-puhuiti), -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* Scrollbar */
