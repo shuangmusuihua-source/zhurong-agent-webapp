@@ -48,8 +48,10 @@ export default function Home() {
     questions: Array<{
       question: string;
       header: string;
-      options: Array<{ label: string; description?: string }>;
+      options?: Array<{ label: string; description?: string }>;
       multiSelect?: boolean;
+      type?: "options" | "outline";
+      items?: string[];
     }>;
   } | undefined>();
   // 累积所有问题的回答，全部回答完才 resolve canUseTool Promise

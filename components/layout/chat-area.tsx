@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Loader2, Globe, Terminal, FileText, Search, ArrowUp, ArrowDownToLine, Square, RotateCcw, Check } from "lucide-react";
+import { Loader2, Globe, Terminal, FileText, Search, ArrowUp, ArrowDownToLine, Square, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
 import { computePosition, flip, offset } from "@floating-ui/dom";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
@@ -32,16 +32,117 @@ interface TaskInfo {
   agentSessionId?: string;
 }
 
+interface QuestionData {
+  question: string;
+  header: string;
+  options?: Array<{ label: string; description?: string }>;
+  multiSelect?: boolean;
+  type?: "options" | "outline";
+  items?: string[];
+}
+
+function OutlineCard({
+  question,
+  items,
+  onAnswer,
+}: {
+  question: QuestionData;
+  items: string[];
+  onAnswer: (selected: string[]) => void;
+}) {
+  const [list, setList] = useState(items);
+  const [newItem, setNewItem] = useState("");
+
+  const moveItem = (index: number, direction: "up" | "down") => {
+    const newList = [...list];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newList.length) return;
+    [newList[index], newList[targetIndex]] = [newList[targetIndex], newList[index]];
+    setList(newList);
+  };
+
+  const removeItem = (index: number) => {
+    setList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addItem = () => {
+    if (newItem.trim()) {
+      setList((prev) => [...prev, newItem.trim()]);
+      setNewItem("");
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-message-ai p-4 space-y-3">
+      <div>
+        <span className="text-xs font-medium text-primary">{question.header}</span>
+        <p className="text-sm text-foreground mt-0.5">{question.question}</p>
+      </div>
+      <div className="space-y-1">
+        {list.map((item, index) => (
+          <div key={index} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/50 text-sm">
+            <span className="text-xs text-muted-foreground w-5 text-center">{index + 1}</span>
+            <span className="flex-1 min-w-0 text-foreground">{item}</span>
+            <button
+              onClick={() => moveItem(index, "up")}
+              disabled={index === 0}
+              className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:bg-secondary disabled:opacity-30 transition-colors"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => moveItem(index, "down")}
+              disabled={index === list.length - 1}
+              className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:bg-secondary disabled:opacity-30 transition-colors"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => removeItem(index)}
+              className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addItem();
+            }
+          }}
+          placeholder="添加新页..."
+          className="flex-1 bg-transparent border border-border rounded-lg px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
+        />
+        <button
+          onClick={addItem}
+          disabled={!newItem.trim()}
+          className="px-3 py-1.5 rounded-lg bg-secondary text-sm text-foreground hover:bg-secondary/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          添加
+        </button>
+      </div>
+      <button
+        onClick={() => onAnswer(list)}
+        disabled={list.length === 0}
+        className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        确认大纲
+      </button>
+    </div>
+  );
+}
+
 function QuestionCard({
   question,
   onAnswer,
 }: {
-  question: {
-    question: string;
-    header: string;
-    options: Array<{ label: string; description?: string }>;
-    multiSelect?: boolean;
-  };
+  question: QuestionData;
   onAnswer: (selected: string[]) => void;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -63,7 +164,7 @@ function QuestionCard({
         <p className="text-sm text-foreground mt-0.5">{question.question}</p>
       </div>
       <div className="space-y-1.5">
-        {question.options.map((opt) => {
+        {(question.options ?? []).map((opt) => {
           const isSelected = selected.includes(opt.label);
           return (
             <button
@@ -175,11 +276,13 @@ export function ChatArea({
     questions: Array<{
       question: string;
       header: string;
-      options: Array<{ label: string; description?: string }>;
+      options?: Array<{ label: string; description?: string }>;
       multiSelect?: boolean;
+      type?: "options" | "outline";
+      items?: string[];
     }>;
   };
-  onQuestionAnswered?: (answers: string[]) => void;
+  onQuestionAnswered?: (questionIndex: number, answers: string[]) => void;
 }) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -285,6 +388,19 @@ export function ChatArea({
   const isTaskRunning = activeTask?.status === "running";
   const isTaskFailed = activeTask?.status === "failed";
   const isTaskPending = activeTask?.status === "pending";
+  const isWaitingForInput = pendingQuestion !== undefined && pendingQuestion.questions.length > 0;
+
+  // 追问确认：合并选项 + 输入框文字，带 questionIndex
+  const handleQuestionConfirm = (questionIndex: number, selectedOptions: string[]) => {
+    const parts = [...selectedOptions];
+    if (input.trim()) {
+      parts.push(input.trim());
+    }
+    if (parts.length > 0) {
+      onQuestionAnswered?.(questionIndex, parts);
+      setInput("");
+    }
+  };
 
   return (
     <SquircleContainer
@@ -293,7 +409,7 @@ export function ChatArea({
     >
       <div className="flex items-center justify-between px-5 py-3.5">
         <span className="text-sm font-medium text-muted-foreground">
-          {isTaskRunning ? "任务执行中" : isTaskFailed ? "任务失败" : "对话"}
+          {isWaitingForInput ? "等待输入" : isTaskRunning ? "任务执行中" : isTaskFailed ? "任务失败" : "对话"}
         </span>
         {activeTask && (
           <span className="text-xs text-muted-foreground">
@@ -304,7 +420,7 @@ export function ChatArea({
 
       {/* 消息列表始终显示 */}
       <div ref={(el) => { messagesContainerRef.current = el; scrollHideRef.current = el; }} className="flex-1 overflow-y-auto p-5 pb-20 flex flex-col gap-5">
-        {messages.length === 0 && !isTaskRunning && !isTaskFailed && (
+        {messages.length === 0 && !isTaskRunning && !isTaskFailed && !isWaitingForInput && (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <Search className="w-6 h-6" />
@@ -321,17 +437,118 @@ export function ChatArea({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* AskUserQuestion 交互面板 */}
-      {pendingQuestion && pendingQuestion.questions.length > 0 && (
-        <div className="px-5 pb-2">
-          {pendingQuestion.questions.map((q, qi) => (
-            <QuestionCard
-              key={qi}
-              question={q}
-              onAnswer={(selected) => onQuestionAnswered?.(selected)}
+      {/* 底部区域：三种形态 */}
+      {isTaskRunning && !isWaitingForInput ? (
+        /* 形态 2：执行中 — 伙伴名 + 工具状态 + 停止按钮 */
+        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-5 right-5 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
+              {activeTask.buddyAvatar ?? activeTask.buddyName?.[0] ?? "?"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium">{activeTask.buddyName ?? "伙伴"} 正在执行</div>
+              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {activeTask.toolStatus ?? "正在处理你的任务..."}
+              </div>
+            </div>
+            <button
+              onClick={() => onStopTask?.(activeTask.taskId)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0"
+            >
+              <Square className="w-3.5 h-3.5" />
+              停止
+            </button>
+          </div>
+        </SquircleContainer>
+      ) : isWaitingForInput ? (
+        /* 形态 3：追问 — QuestionCard + 输入框兜底 + 确认按钮 */
+        <div className="absolute bottom-4 left-5 right-5 flex flex-col gap-2">
+          {/* QuestionCard 可滚动区域 */}
+          <div className="max-h-[45vh] overflow-y-auto space-y-2 pr-1">
+            {pendingQuestion!.questions.map((q, qi) => {
+              if (q.type === "outline" && q.items) {
+                return (
+                  <OutlineCard
+                    key={qi}
+                    question={q}
+                    items={q.items}
+                    onAnswer={(selected) => handleQuestionConfirm(qi, selected)}
+                  />
+                );
+              }
+              return (
+                <QuestionCard
+                  key={qi}
+                  question={q}
+                  onAnswer={(selected) => handleQuestionConfirm(qi, selected)}
+                />
+              );
+            })}
+          </div>
+          {/* 输入框兜底 */}
+          <SquircleContainer cornerRadius={16} className="flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
+              {activeTask?.buddyAvatar ?? activeTask?.buddyName?.[0] ?? "?"}
+            </div>
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleTextareaChange}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (input.trim()) {
+                    handleQuestionConfirm(0, []);
+                  }
+                }
+              }}
+              placeholder="也可以直接输入回答..."
+              rows={1}
+              className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
             />
-          ))}
+            <button
+              onClick={() => {
+                if (input.trim()) {
+                  handleQuestionConfirm(0, []);
+                }
+              }}
+              disabled={!input.trim()}
+              className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+            >
+              <ArrowUp className="w-4 h-4" />
+            </button>
+          </SquircleContainer>
         </div>
+      ) : (
+        /* 形态 1：空闲/失败 — 普通输入框 + 重试按钮 */
+        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+          {isTaskFailed && (
+            <button
+              onClick={() => onRetryTask?.(activeTask.taskId)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              重试
+            </button>
+          )}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleTextareaChange}
+            onKeyDown={handleKeyDown}
+            placeholder={isTaskPending ? `描述你想让${activeTask?.buddyName ?? "伙伴"}完成的任务...` : isTaskFailed ? "输入消息继续，或点击重试..." : "描述你的任务..."}
+            rows={1}
+            className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={!input.trim() || isLoading}
+            className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </button>
+        </SquircleContainer>
       )}
 
       {buddyRecommendations.length > 0 && (
@@ -365,59 +582,6 @@ export function ChatArea({
           带入对话框
         </button>
       </div>
-
-      {/* 底部区域：running时为状态面板，其余显示输入框 */}
-      {isTaskRunning ? (
-        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-5 right-5 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-4 py-3 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
-              {activeTask.buddyAvatar ?? activeTask.buddyName?.[0] ?? "?"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">{activeTask.buddyName ?? "伙伴"} 正在执行</div>
-              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                {activeTask.toolStatus ?? "正在处理你的任务..."}
-              </div>
-            </div>
-            <button
-              onClick={() => onStopTask?.(activeTask.taskId)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0"
-            >
-              <Square className="w-3.5 h-3.5" />
-              停止
-            </button>
-          </div>
-        </SquircleContainer>
-      ) : (
-        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-          {isTaskFailed && (
-            <button
-              onClick={() => onRetryTask?.(activeTask.taskId)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              重试
-            </button>
-          )}
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleTextareaChange}
-            onKeyDown={handleKeyDown}
-            placeholder={isTaskPending ? `描述你想让${activeTask?.buddyName ?? "伙伴"}完成的任务...` : isTaskFailed ? "输入消息继续，或点击重试..." : "描述你的任务..."}
-            rows={1}
-            className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={!input.trim() || isLoading}
-            className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
-          >
-            <ArrowUp className="w-4 h-4" />
-          </button>
-        </SquircleContainer>
-      )}
     </SquircleContainer>
   );
 }
