@@ -5,6 +5,11 @@ import type {
   SDKPartialAssistantMessage
 } from "@anthropic-ai/claude-agent-sdk";
 import { createWebSearchMcpServer } from "./tools/web-search";
+import { mkdirSync } from "fs";
+import { join } from "path";
+
+const WORKSPACE_OUTPUTS_DIR = join(process.cwd(), "workspace-outputs");
+mkdirSync(WORKSPACE_OUTPUTS_DIR, { recursive: true });
 
 export interface AgentOptions {
   prompt: string;
@@ -42,7 +47,6 @@ export async function* streamAgentResponse(
         skills: options.skills ?? "all",
         allowedTools: options.allowedTools ?? [
           "Read",
-          "Bash",
           "Glob",
           "Grep",
           "Edit",

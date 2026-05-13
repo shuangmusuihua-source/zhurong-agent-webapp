@@ -1,15 +1,23 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/lib/db";
 import { digitalBuddy } from "@/lib/db/schema";
+import { auth } from "@/lib/auth/auth-server";
+import { headers } from "next/headers";
+
+const anthropicClient = new Anthropic();
 
 export async function POST(req: Request) {
   try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { message } = await req.json();
     if (!message) {
       return Response.json({ error: "message is required" }, { status: 400 });
     }
 
-    // 获取所有伙伴信息
     const buddies = await db.select().from(digitalBuddy);
     const buddyList = buddies.map((b) => ({
       id: b.id,
@@ -19,8 +27,7 @@ export async function POST(req: Request) {
       tags: typeof b.tags === "string" ? JSON.parse(b.tags) : b.tags,
     }));
 
-    const client = new Anthropic();
-    const response = await client.messages.create({
+    const response = await anthropicClient.messages.create({
       model: process.env.ANTHROPIC_MODEL ?? "astron-code-latest",
       max_tokens: 512,
       messages: [
@@ -52,7 +59,6 @@ ${buddyList.map((b) => `- ID: ${b.id}, 名称: ${b.name}, 能力: ${b.descriptio
       return Response.json({ needsBuddy: false, buddyIds: [], reply: "请告诉我你想做什么" });
     }
 
-    // 提取 JSON（模型可能包裹在 markdown 代码块中）
     let jsonStr = textBlock.text.trim();
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {

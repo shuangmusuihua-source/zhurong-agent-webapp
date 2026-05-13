@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 // ==================== Better Auth 表 ====================
 export const user = sqliteTable("user", {
@@ -58,7 +58,9 @@ export const workspace = sqliteTable("workspace", {
   lastActiveAt: integer("last_active_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
+}, (table) => [
+  index("workspace_user_id_idx").on(table.userId),
+]);
 
 // 数字伙伴（Skill 的拟人化包装）
 export const digitalBuddy = sqliteTable("digital_buddy", {
@@ -81,7 +83,9 @@ export const task = sqliteTable("task", {
   agentSessionId: text("agent_session_id"), // Claude Agent Session ID，用于 resume
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
+}, (table) => [
+  index("task_workspace_id_idx").on(table.workspaceId),
+]);
 
 // 对话
 export const conversation = sqliteTable("conversation", {
@@ -92,7 +96,9 @@ export const conversation = sqliteTable("conversation", {
   activeBuddyId: text("active_buddy_id").references(() => digitalBuddy.id),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
+}, (table) => [
+  index("conversation_workspace_id_idx").on(table.workspaceId),
+]);
 
 // 消息
 export const message = sqliteTable("message", {
@@ -103,7 +109,9 @@ export const message = sqliteTable("message", {
   content: text("content").notNull(),
   metadata: text("metadata"), // JSON: { type: 'progress' | 'product', productId?: string }
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
+}, (table) => [
+  index("message_conversation_id_idx").on(table.conversationId),
+]);
 
 // 生成产物
 export const product = sqliteTable("product", {
@@ -119,7 +127,10 @@ export const product = sqliteTable("product", {
   metadata: text("metadata"), // JSON
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
+}, (table) => [
+  index("product_workspace_id_idx").on(table.workspaceId),
+  index("product_task_id_idx").on(table.taskId),
+]);
 
 // 上下文文件
 export const contextFile = sqliteTable("context_file", {

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { task, digitalBuddy, workspace } from "@/lib/db/schema";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 import { auth } from "@/lib/auth/auth-server";
 import { nanoid } from "nanoid";
 
@@ -10,14 +10,14 @@ export async function GET(req: NextRequest) {
   const workspaceId = req.nextUrl.searchParams.get("workspaceId");
   const recent = req.nextUrl.searchParams.get("recent");
 
-  // 获取用户最近任务（不限工作区）
-  if (recent) {
-    try {
-      const session = await auth.api.getSession({ headers: req.headers });
-      if (!session?.user) {
-        return Response.json({ error: "Unauthorized" }, { status: 401 });
-      }
+  try {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
+    // 获取用户最近任务（不限工作区）
+    if (recent) {
       const userWorkspaces = await db
         .select({ id: workspace.id })
         .from(workspace)
@@ -47,17 +47,23 @@ export async function GET(req: NextRequest) {
         .limit(10);
 
       return Response.json({ tasks });
-    } catch (error) {
-      console.error("Get recent tasks error:", error);
-      return Response.json({ error: "Server error" }, { status: 500 });
     }
-  }
 
-  if (!workspaceId) {
-    return Response.json({ error: "workspaceId is required" }, { status: 400 });
-  }
+    if (!workspaceId) {
+      return Response.json({ error: "workspaceId is required" }, { status: 400 });
+    }
 
-  try {
+    // 验证 workspace 归属
+    const [ws] = await db
+      .select()
+      .from(workspace)
+      .where(and(eq(workspace.id, workspaceId), eq(workspace.userId, session.user.id)))
+      .limit(1);
+
+    if (!ws) {
+      return Response.json({ tasks: [] });
+    }
+
     const tasks = await db
       .select({
         id: task.id,
@@ -89,6 +95,11 @@ export async function GET(req: NextRequest) {
 // 创建任务
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { workspaceId, buddyId, conversationId } = body;
 
@@ -97,6 +108,17 @@ export async function POST(req: NextRequest) {
         { error: "workspaceId and buddyId are required" },
         { status: 400 }
       );
+    }
+
+    // 验证 workspace 归属
+    const [ws] = await db
+      .select()
+      .from(workspace)
+      .where(and(eq(workspace.id, workspaceId), eq(workspace.userId, session.user.id)))
+      .limit(1);
+
+    if (!ws) {
+      return Response.json({ error: "Workspace not found" }, { status: 404 });
     }
 
     // 检查是否有执行中的任务

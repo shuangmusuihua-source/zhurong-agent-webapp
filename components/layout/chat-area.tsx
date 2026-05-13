@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Loader2, Globe, Terminal, FileText, Search, ArrowUp, ArrowDownToLine, Square, RotateCcw, Check } from "lucide-react";
 import { computePosition, flip, offset } from "@floating-ui/dom";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
@@ -29,6 +29,7 @@ interface TaskInfo {
   buddyAvatar?: string;
   status: TaskStatus;
   toolStatus?: string;
+  agentSessionId?: string;
 }
 
 function QuestionCard({
@@ -99,6 +100,54 @@ function QuestionCard({
     </div>
   );
 }
+
+const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: Message }) {
+  return (
+    <div
+      className={`flex gap-3 max-w-[720px] ${
+        msg.role === "user" ? "self-end flex-row-reverse items-start" : ""
+      }`}
+    >
+      {msg.role === "user" && (
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+          Z
+        </div>
+      )}
+      {msg.role === "assistant" && (
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 via-teal-400 to-green-400 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+          AI
+        </div>
+      )}
+      {msg.role === "buddy" && (
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+          {msg.buddyAvatar}
+        </div>
+      )}
+
+      <div className={msg.role === "user" ? "" : "flex-1 min-w-0"}>
+        {msg.role === "user" ? (
+          <SquircleContainer cornerRadius={16} className="message-appear px-4 py-3 bg-message-user text-message-user-fg text-sm leading-relaxed" style={{ borderTopRightRadius: 0 }}>
+            {msg.content}
+          </SquircleContainer>
+        ) : msg.toolStatus ? (
+          <div className="message-appear flex items-center gap-2 px-3.5 py-2 bg-tool-status-bg border border-tool-status-border rounded-lg text-sm text-tool-status-fg">
+            {getToolIcon(msg.toolStatus)}
+            <span>{msg.toolStatus}</span>
+          </div>
+        ) : msg.content === "思考中..." ? (
+          <div className="message-appear flex items-center gap-2 px-3.5 py-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>思考中...</span>
+          </div>
+        ) : msg.content ? (
+          <SquircleContainer cornerRadius={16} className={`message-appear px-4 py-3 bg-message-ai text-message-ai-fg text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert ${msg.isStreaming ? "typing-cursor" : ""}`} style={{ borderBottomLeftRadius: 0 }}>
+            <MarkdownRenderer content={msg.content} />
+          </SquircleContainer>
+        ) : null}
+      </div>
+    </div>
+  );
+});
 
 export function ChatArea({
   messages,
@@ -267,50 +316,7 @@ export function ChatArea({
         )}
 
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex gap-3 max-w-[720px] ${
-              msg.role === "user" ? "self-end flex-row-reverse items-start" : ""
-            }`}
-          >
-            {msg.role === "user" && (
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                Z
-              </div>
-            )}
-            {msg.role === "assistant" && (
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 via-teal-400 to-green-400 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                AI
-              </div>
-            )}
-            {msg.role === "buddy" && (
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                {msg.buddyAvatar}
-              </div>
-            )}
-
-            <div className={msg.role === "user" ? "" : "flex-1 min-w-0"}>
-              {msg.role === "user" ? (
-                <SquircleContainer cornerRadius={16} className="message-appear px-4 py-3 bg-message-user text-message-user-fg text-sm leading-relaxed" style={{ borderTopRightRadius: 0 }}>
-                  {msg.content}
-                </SquircleContainer>
-              ) : msg.toolStatus ? (
-                <div className="message-appear flex items-center gap-2 px-3.5 py-2 bg-tool-status-bg border border-tool-status-border rounded-lg text-sm text-tool-status-fg">
-                  {getToolIcon(msg.toolStatus)}
-                  <span>{msg.toolStatus}</span>
-                </div>
-              ) : msg.content === "思考中..." ? (
-                <div className="message-appear flex items-center gap-2 px-3.5 py-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>思考中...</span>
-                </div>
-              ) : msg.content ? (
-                <SquircleContainer cornerRadius={16} className={`message-appear px-4 py-3 bg-message-ai text-message-ai-fg text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert ${msg.isStreaming ? "typing-cursor" : ""}`} style={{ borderBottomLeftRadius: 0 }}>
-                  <MarkdownRenderer content={msg.content} />
-                </SquircleContainer>
-              ) : null}
-            </div>
-          </div>
+          <MessageBubble key={msg.id} msg={msg} />
         ))}
         <div ref={messagesEndRef} />
       </div>
@@ -360,7 +366,7 @@ export function ChatArea({
         </button>
       </div>
 
-      {/* 底部区域：pending/正常时为输入框，running时为状态面板，failed时为重试 */}
+      {/* 底部区域：running时为状态面板，其余显示输入框 */}
       {isTaskRunning ? (
         <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-5 right-5 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3">
@@ -383,43 +389,23 @@ export function ChatArea({
             </button>
           </div>
         </SquircleContainer>
-      ) : isTaskFailed ? (
-        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-5 right-5 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-4 py-3 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive text-sm font-bold flex-shrink-0">
-              {activeTask.buddyAvatar ?? activeTask.buddyName?.[0] ?? "?"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">任务执行失败</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {activeTask.buddyName ?? "伙伴"} 执行过程中遇到问题
-              </div>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => onRetryTask?.(activeTask.taskId)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs hover:bg-primary/90 transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                重试
-              </button>
-              <button
-                onClick={() => onSendMessage("继续对话")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors"
-              >
-                继续
-              </button>
-            </div>
-          </div>
-        </SquircleContainer>
       ) : (
         <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+          {isTaskFailed && (
+            <button
+              onClick={() => onRetryTask?.(activeTask.taskId)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              重试
+            </button>
+          )}
           <textarea
             ref={textareaRef}
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
-            placeholder={isTaskPending ? `描述你想让${activeTask?.buddyName ?? "伙伴"}完成的任务...` : "描述你的任务..."}
+            placeholder={isTaskPending ? `描述你想让${activeTask?.buddyName ?? "伙伴"}完成的任务...` : isTaskFailed ? "输入消息继续，或点击重试..." : "描述你的任务..."}
             rows={1}
             className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
           />
