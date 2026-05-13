@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { prompt, conversationId: existingConversationId, workspaceId } = body;
+    const { prompt, conversationId: existingConversationId, workspaceId, agentSessionId: resumeSessionId } = body;
 
     if (!prompt) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     const skillId = currentTask?.buddy?.skillId;
 
     let currentConversationId = existingConversationId;
-    let agentSessionId: string | undefined;
+    let agentSessionId: string | undefined = resumeSessionId;
 
     if (currentConversationId) {
       const existingConversation = await db

@@ -264,152 +264,148 @@ export default function Home() {
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
+      let sseBuffer = "";
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n");
+          sseBuffer += decoder.decode(value, { stream: true });
+          const parts = sseBuffer.split("\n\n");
+          sseBuffer = parts.pop()!;
 
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            try {
-              const event = JSON.parse(line.slice(6));
+          for (const part of parts) {
+            for (const line of part.split("\n")) {
+              if (!line.startsWith("data: ")) continue;
+              try {
+                const event = JSON.parse(line.slice(6));
 
-              if (event.type === "task_started") {
-                setActiveTask({
-                  taskId: event.taskId,
-                  buddyName: event.buddyName,
-                  buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
-                  status: "running",
-                  toolStatus: undefined,
-                });
-                setWorkspaceTasks((prev) => {
-                  const exists = prev.some((t) => t.id === event.taskId);
-                  if (exists) {
-                    return prev.map((t) =>
-                      t.id === event.taskId ? { ...t, status: "running" } : t
-                    );
-                  }
-                  return [...prev, {
-                    id: event.taskId,
+                if (event.type === "task_started") {
+                  setActiveTask({
+                    taskId: event.taskId,
                     buddyName: event.buddyName,
                     buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
                     status: "running",
-                    createdAt: new Date().toISOString(),
-                  }];
-                });
-                setSelectedTaskId(event.taskId);
-              }
+                    toolStatus: undefined,
+                  });
+                  setWorkspaceTasks((prev) => {
+                    const exists = prev.some((t) => t.id === event.taskId);
+                    if (exists) {
+                      return prev.map((t) =>
+                        t.id === event.taskId ? { ...t, status: "running" } : t
+                      );
+                    }
+                    return [...prev, {
+                      id: event.taskId,
+                      buddyName: event.buddyName,
+                      buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
+                      status: "running",
+                      createdAt: new Date().toISOString(),
+                    }];
+                  });
+                  setSelectedTaskId(event.taskId);
+                }
 
-              if (event.type === "task_completed") {
-                setActiveTask((prev) =>
-                  prev ? { ...prev, status: "completed" } : undefined
-                );
-                setWorkspaceTasks((prev) =>
-                  prev.map((t) =>
-                    t.id === event.taskId ? { ...t, status: "completed" } : t
-                  )
-                );
-                // 任务完成后，产物状态从 generating → completed
-                setProducts((prev) =>
-                  prev.map((p) =>
-                    p.taskId === event.taskId && p.status === "generating"
-                      ? { ...p, status: "completed" }
-                      : p
-                  )
-                );
-                // 任务完成后清除 activeTask，恢复对话模式
-                setTimeout(() => setActiveTask(undefined), 500);
-              }
+                if (event.type === "task_completed") {
+                  setActiveTask((prev) =>
+                    prev ? { ...prev, status: "completed" } : undefined
+                  );
+                  setWorkspaceTasks((prev) =>
+                    prev.map((t) =>
+                      t.id === event.taskId ? { ...t, status: "completed" } : t
+                    )
+                  );
+                  setProducts((prev) =>
+                    prev.map((p) =>
+                      p.taskId === event.taskId && p.status === "generating"
+                        ? { ...p, status: "completed" }
+                        : p
+                    )
+                  );
+                  setTimeout(() => setActiveTask(undefined), 500);
+                }
 
-              if (event.type === "task_failed") {
-                setActiveTask((prev) =>
-                  prev ? { ...prev, status: "failed" } : undefined
-                );
-                setWorkspaceTasks((prev) =>
-                  prev.map((t) =>
-                    t.id === event.taskId ? { ...t, status: "failed" } : t
-                  )
-                );
-                // 清除流式消息的 toolStatus 和 isStreaming
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.isStreaming || m.toolStatus
-                      ? {
-                          ...m,
-                          isStreaming: false,
-                          toolStatus: undefined,
-                          content: m.content || "任务已停止",
-                        }
-                      : m
-                  )
-                );
-              }
+                if (event.type === "task_failed") {
+                  setActiveTask((prev) =>
+                    prev ? { ...prev, status: "failed" } : undefined
+                  );
+                  setWorkspaceTasks((prev) =>
+                    prev.map((t) =>
+                      t.id === event.taskId ? { ...t, status: "failed" } : t
+                    )
+                  );
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.isStreaming || m.toolStatus
+                        ? { ...m, isStreaming: false, toolStatus: undefined, content: m.content || "任务已停止" }
+                        : m
+                    )
+                  );
+                }
 
-              if (event.type === "tool_use") {
-                const label = TOOL_LABELS[event.toolName] || `正在使用 ${event.toolName}...`;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessageId ? { ...m, toolStatus: label } : m
-                  )
-                );
-                setActiveTask((prev) =>
-                  prev ? { ...prev, toolStatus: label } : prev
-                );
-              }
+                if (event.type === "tool_use") {
+                  const label = TOOL_LABELS[event.toolName] || `正在使用 ${event.toolName}...`;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessageId ? { ...m, toolStatus: label } : m
+                    )
+                  );
+                  setActiveTask((prev) =>
+                    prev ? { ...prev, toolStatus: label } : prev
+                  );
+                }
 
-              if (event.type === "text_delta") {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessageId
-                      ? { ...m, content: m.content + event.text, toolStatus: undefined }
-                      : m
-                  )
-                );
-              }
+                if (event.type === "text_delta") {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessageId
+                        ? { ...m, content: m.content + event.text, toolStatus: undefined }
+                        : m
+                    )
+                  );
+                }
 
-              if (event.type === "complete") {
-                setConversationId(event.conversationId);
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessageId
-                      ? { ...m, isStreaming: false, toolStatus: undefined }
-                      : m
-                  )
-                );
-              }
+                if (event.type === "complete") {
+                  setConversationId(event.conversationId);
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessageId
+                        ? { ...m, isStreaming: false, toolStatus: undefined }
+                        : m
+                    )
+                  );
+                }
 
-              if (event.type === "product_created") {
-                setProducts((prev) => [
-                  ...prev,
-                  {
-                    id: event.productId,
-                    name: event.name,
-                    type: event.productType,
-                    taskId: event.taskId,
-                    status: event.status ?? "generating",
-                  } as Product,
-                ]);
-              }
+                if (event.type === "product_created") {
+                  setProducts((prev) => [
+                    ...prev,
+                    {
+                      id: event.productId,
+                      name: event.name,
+                      type: event.productType,
+                      taskId: event.taskId,
+                      status: event.status ?? "generating",
+                    } as Product,
+                  ]);
+                }
 
-              if (event.type === "ask_user") {
-                setPendingQuestion({ questions: event.questions });
-              }
+                if (event.type === "ask_user") {
+                  setPendingQuestion({ questions: event.questions });
+                }
 
-              if (event.type === "error") {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMessageId
-                      ? { ...m, isStreaming: false, toolStatus: undefined, content: `错误: ${event.message}` }
-                      : m
-                  )
-                );
+                if (event.type === "error") {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessageId
+                        ? { ...m, isStreaming: false, toolStatus: undefined, content: `错误: ${event.message}` }
+                        : m
+                    )
+                  );
+                }
+              } catch {
+                // JSON 解析失败，跳过
               }
-            } catch {
-              // Ignore parse errors for incomplete chunks
             }
           }
         }
