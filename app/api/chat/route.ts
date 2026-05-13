@@ -300,7 +300,9 @@ function streamResponse(
           }
         }
       } catch (error) {
-        if (!controllerClosed) {
+        // AbortError 是 stop 端点主动终止，DB 更新由 stop 端点处理
+        // 其他错误需要更新 DB
+        if (!(error instanceof Error && error.name === "AbortError")) {
           sendAndBroadcast({ type: "error", message: error instanceof Error ? error.message : "Stream error" });
           if (taskId) {
             await db.update(task).set({ status: "failed", updatedAt: new Date() }).where(eq(task.id, taskId));

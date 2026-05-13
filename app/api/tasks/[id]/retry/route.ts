@@ -42,9 +42,10 @@ export async function POST(
       return Response.json({ error: "Task is already running" }, { status: 400 });
     }
 
+    // 重试时设为 pending（不是 running），等前端发 chat 请求时再设为 running
     await db
       .update(task)
-      .set({ status: "running", updatedAt: new Date() })
+      .set({ status: "pending", updatedAt: new Date() })
       .where(eq(task.id, id));
 
     const [updated] = await db

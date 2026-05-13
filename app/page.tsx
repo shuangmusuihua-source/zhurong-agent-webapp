@@ -661,8 +661,9 @@ export default function Home() {
       if (res.ok) {
         const { task: updatedTask } = await res.json();
         setActiveTask((prev) =>
-          prev ? { ...prev, status: "running", toolStatus: undefined, agentSessionId: updatedTask?.agentSessionId } : undefined
+          prev ? { ...prev, status: "pending", toolStatus: undefined, agentSessionId: updatedTask?.agentSessionId } : undefined
         );
+        // 如果有 agentSessionId，用 resume 保持上下文连续
         const originalPrompt = messages.find((m) => m.role === "user")?.content ?? "继续执行";
         handleSendMessage(originalPrompt, updatedTask?.agentSessionId, true);
       }

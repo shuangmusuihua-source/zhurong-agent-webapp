@@ -45,7 +45,23 @@ export async function POST(
 
     const activeTask = activeTasks.get(id);
     if (activeTask) {
+      // 如果 agent 被 canUseTool 暂停（追问中），先 resolve 让 agent 不再等待
+      if (activeTask.pendingQuestionResolve) {
+        activeTask.pendingQuestionResolve({
+          behavior: "allow",
+          updatedInput: activeTask.pendingQuestionInput ?? {},
+        });
+        activeTask.pendingQuestionResolve = undefined;
+        activeTask.pendingQuestionInput = undefined;
+      }
+
+      // abort agent 进程
       activeTask.abortController.abort();
+
+      // 标记 broadcaster 完成，清理订阅者
+      activeTask.broadcaster?.markComplete();
+
+      // 从内存中移除
       activeTasks.delete(id);
     }
 
