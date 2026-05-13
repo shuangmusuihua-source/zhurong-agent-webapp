@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Sidebar, ChatArea, RightBar, HomePage } from "@/components/layout";
 import { nanoid } from "nanoid";
 import { authClient } from "@/lib/auth/auth-client";
-import type { Workspace, Message, Product, ContextFile, DigitalBuddy, TaskStatus } from "@/lib/types";
+import type { Workspace, Message, Product, DigitalBuddy, TaskStatus } from "@/lib/types";
 import { TOOL_LABELS } from "@/lib/types";
 import {
   Dialog,
@@ -32,7 +32,6 @@ export default function Home() {
   const [activeView, setActiveView] = useState<"home" | "workspace">("home");
   const [messages, setMessages] = useState<Message[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [contextFiles, setContextFiles] = useState<ContextFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -107,7 +106,6 @@ export default function Home() {
         setActiveView("workspace");
         setMessages([]);
         setProducts([]);
-        setContextFiles([]);
         setActiveTask(undefined);
         setCreateDialogOpen(false);
         setNewWorkspaceName("");
@@ -169,7 +167,6 @@ export default function Home() {
     setActiveView("workspace");
     setMessages([]);
     setProducts([]);
-    setContextFiles([]);
     setConversationId(undefined);
     setActiveTask(undefined);
     setWorkspaceTasks([]);
@@ -557,7 +554,6 @@ export default function Home() {
             selectedTaskId={selectedTaskId}
             onTaskSelect={handleTaskSelect}
             products={products}
-            contextFiles={contextFiles}
             onProductClick={handleProductClick}
             onProductDelete={async (productId: string) => {
               try {

@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { signOut } from "@/lib/auth/auth-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,7 @@ export function Sidebar({
   onWorkspaceDelete,
   collapsed,
   onToggleCollapse,
+  user,
 }: {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
@@ -44,6 +46,7 @@ export function Sidebar({
   onWorkspaceDelete?: (id: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  user?: { name?: string | null; email?: string | null };
 }) {
   const { theme, setTheme } = useTheme();
   const scrollRef = useScrollHide();
@@ -154,11 +157,11 @@ export function Sidebar({
               }`}
             >
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                Z
+                {(user?.name ?? user?.email ?? "U")[0].toUpperCase()}
               </div>
               {!collapsed && (
                 <>
-                  <span className="text-sm text-muted-foreground">zuohui</span>
+                  <span className="text-sm text-muted-foreground">{user?.name ?? user?.email ?? "用户"}</span>
                   <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground" />
                 </>
               )}
@@ -178,7 +181,10 @@ export function Sidebar({
               设置
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
+            <DropdownMenuItem variant="destructive" onClick={async () => {
+              await signOut();
+              window.location.href = "/login";
+            }}>
               <LogOut className="w-4 h-4" />
               退出登录
             </DropdownMenuItem>
