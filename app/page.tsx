@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { redirect } from "next/navigation";
 import { MemoizedSidebar as Sidebar, ChatArea, MemoizedRightBar as RightBar, HomePage } from "@/components/layout";
 import { nanoid } from "nanoid";
@@ -52,6 +52,9 @@ export default function Home() {
       multiSelect?: boolean;
     }>;
   } | undefined>();
+  // 累积所有问题的回答，全部回答完才 resolve canUseTool Promise
+  const accumulatedAnswersRef = useRef<Record<string, string>>({});
+  const totalQuestionsRef = useRef(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -241,8 +244,75 @@ export default function Home() {
       setMessages((prev) => [...prev, userMessage]);
     }
 
+    // 如果没有 activeTask，先尝试意图识别
+    let taskId = activeTask?.taskId;
+    let buddyId: string | undefined;
+    let agentSessionId = resumeSessionId ?? activeTask?.agentSessionId;
+
+    if (!taskId && !isRetry) {
+      try {
+        const intentRes = await fetch("/api/intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: content }),
+        });
+        if (intentRes.ok) {
+          const intentData = await intentRes.json();
+          if (intentData.needsBuddy && intentData.buddyIds?.length > 0) {
+            buddyId = intentData.buddyIds[0];
+
+            // 自动创建 task
+            const taskRes = await fetch("/api/tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ workspaceId: activeWorkspaceId, buddyId }),
+            });
+            if (taskRes.ok) {
+              const taskData = await taskRes.json();
+              const newTaskId = taskData.task.id;
+
+              // 获取 buddy 信息
+              const buddyRes = await fetch("/api/buddies");
+              let buddyName: string | undefined;
+              let buddyAvatar: string | undefined;
+              if (buddyRes.ok) {
+                const buddiesData = await buddyRes.json();
+                const buddy = (buddiesData.buddies ?? []).find((b: DigitalBuddy) => b.id === buddyId);
+                buddyName = buddy?.name;
+                buddyAvatar = buddy?.avatar ?? buddy?.name?.[0];
+              }
+
+              taskId = newTaskId;
+              setActiveTask({
+                taskId: newTaskId,
+                buddyName,
+                buddyAvatar,
+                status: "pending",
+                agentSessionId: undefined,
+              });
+              setWorkspaceTasks((prev) => [
+                ...prev,
+                {
+                  id: newTaskId,
+                  buddyName,
+                  buddyAvatar,
+                  status: "pending",
+                  createdAt: new Date().toISOString(),
+                },
+              ]);
+              setSelectedTaskId(newTaskId);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Intent recognition failed:", error);
+        // 意图识别失败，继续作为普通对话
+      }
+    }
+
     setIsLoading(true);
-    const assistantMessageId = nanoid();
+    let assistantMessageId = nanoid();
+    let isSseDone = false;
     setMessages((prev) => [
       ...prev,
       { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." },
@@ -256,8 +326,9 @@ export default function Home() {
           prompt: content,
           conversationId,
           workspaceId: activeWorkspaceId,
-          taskId: activeTask?.taskId,
-          agentSessionId: resumeSessionId ?? activeTask?.agentSessionId,
+          taskId,
+          buddyId,
+          agentSessionId,
         }),
       });
 
@@ -371,6 +442,7 @@ export default function Home() {
                 }
 
                 if (event.type === "complete") {
+                  // 最终完成（非追问），关闭 SSE 流
                   setConversationId(event.conversationId);
                   if (event.agentSessionId) {
                     setActiveTask((prev) =>
@@ -384,6 +456,8 @@ export default function Home() {
                         : m
                     )
                   );
+                  // 标记 SSE 流结束，让 finally 不设 isLoading=false
+                  isSseDone = true;
                 }
 
                 if (event.type === "product_created") {
@@ -400,6 +474,8 @@ export default function Home() {
                 }
 
                 if (event.type === "ask_user") {
+                  accumulatedAnswersRef.current = {};
+                  totalQuestionsRef.current = event.questions?.length ?? 0;
                   setPendingQuestion({ questions: event.questions });
                 }
 
@@ -429,7 +505,9 @@ export default function Home() {
         )
       );
     } finally {
-      setIsLoading(false);
+      if (isSseDone) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -557,10 +635,39 @@ export default function Home() {
             onStopTask={handleStopTask}
             onRetryTask={handleRetryTask}
             pendingQuestion={pendingQuestion}
-            onQuestionAnswered={(answers: string[]) => {
-              const answerText = answers.join(", ");
+            onQuestionAnswered={(questionIndex: number, answers: string[]) => {
+              if (!activeTask?.taskId) return;
+              // 累积回答
+              const q = pendingQuestion?.questions[questionIndex];
+              if (q) {
+                accumulatedAnswersRef.current[q.question] = answers.join(", ");
+              }
+              // 添加用户消息到本地 state
+              setMessages((prev) => [...prev, { id: nanoid(), role: "user", content: answers.join(", ") }]);
+
+              // 检查是否所有问题都回答完了（用原始问题数量，不是当前剩余数量）
+              const totalQuestions = totalQuestionsRef.current;
+              const answeredCount = Object.keys(accumulatedAnswersRef.current).length;
+
+              if (answeredCount < totalQuestions) {
+                // 还有问题没回答，只移除已回答的 question
+                setPendingQuestion((prev) => {
+                  if (!prev) return undefined;
+                  const remaining = prev.questions.filter((_, i) => i !== questionIndex);
+                  return remaining.length > 0 ? { ...prev, questions: remaining } : undefined;
+                });
+                return;
+              }
+
+              // 所有问题都回答完了，清空状态，resolve canUseTool Promise
+              const allAnswers = { ...accumulatedAnswersRef.current };
+              accumulatedAnswersRef.current = {};
               setPendingQuestion(undefined);
-              handleSendMessage(answerText);
+              fetch(`/api/tasks/${activeTask.taskId}/answer`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ answers: allAnswers, conversationId }),
+              }).catch((error) => console.error("Answer injection failed:", error));
             }}
           />
           <RightBar
