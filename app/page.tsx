@@ -22,6 +22,7 @@ interface TaskInfo {
   buddyAvatar?: string;
   status: TaskStatus;
   toolStatus?: string;
+  agentSessionId?: string;
 }
 
 export default function Home() {
@@ -148,6 +149,7 @@ export default function Home() {
         buddyName: buddy.name,
         buddyAvatar: buddy.name[0],
         status: "pending",
+        agentSessionId: undefined,
       });
       setWorkspaceTasks([{
         id: taskData.task.id,
@@ -212,6 +214,7 @@ export default function Home() {
             buddyName: activeTaskData.buddyName,
             buddyAvatar: activeTaskData.buddyAvatar ?? activeTaskData.buddyName?.[0],
             status: activeTaskData.status,
+            agentSessionId: activeTaskData.agentSessionId,
           });
           setSelectedTaskId(activeTaskData.id);
           // 加载该任务的产物
@@ -227,15 +230,17 @@ export default function Home() {
     }
   };
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, resumeSessionId?: string, isRetry?: boolean) => {
     if (!activeWorkspaceId) return;
 
-    const userMessage: Message = {
-      id: nanoid(),
-      role: "user",
-      content,
-    };
-    setMessages((prev) => [...prev, userMessage]);
+    if (!isRetry) {
+      const userMessage: Message = {
+        id: nanoid(),
+        role: "user",
+        content,
+      };
+      setMessages((prev) => [...prev, userMessage]);
+    }
 
     setIsLoading(true);
     const assistantMessageId = nanoid();
@@ -252,6 +257,8 @@ export default function Home() {
           prompt: content,
           conversationId,
           workspaceId: activeWorkspaceId,
+          taskId: activeTask?.taskId,
+          agentSessionId: resumeSessionId ?? activeTask?.agentSessionId,
         }),
       });
 
@@ -285,6 +292,7 @@ export default function Home() {
                     buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
                     status: "running",
                     toolStatus: undefined,
+                    agentSessionId: event.agentSessionId,
                   });
                   setWorkspaceTasks((prev) => {
                     const exists = prev.some((t) => t.id === event.taskId);
@@ -365,6 +373,11 @@ export default function Home() {
 
                 if (event.type === "complete") {
                   setConversationId(event.conversationId);
+                  if (event.agentSessionId) {
+                    setActiveTask((prev) =>
+                      prev ? { ...prev, agentSessionId: event.agentSessionId } : prev
+                    );
+                  }
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === assistantMessageId
@@ -427,6 +440,7 @@ export default function Home() {
       setActiveTask((prev) =>
         prev ? { ...prev, status: "failed" } : undefined
       );
+      setIsLoading(false);
       // 清除流式消息的 toolStatus 和 isStreaming
       setMessages((prev) =>
         prev.map((m) =>
@@ -449,11 +463,12 @@ export default function Home() {
     try {
       const res = await fetch(`/api/tasks/${taskId}/retry`, { method: "POST" });
       if (res.ok) {
+        const { task: updatedTask } = await res.json();
         setActiveTask((prev) =>
-          prev ? { ...prev, status: "running", toolStatus: undefined } : undefined
+          prev ? { ...prev, status: "running", toolStatus: undefined, agentSessionId: updatedTask?.agentSessionId } : undefined
         );
-        // 触发重新执行
-        handleSendMessage("重试任务");
+        const originalPrompt = messages.find((m) => m.role === "user")?.content ?? "继续执行";
+        handleSendMessage(originalPrompt, updatedTask?.agentSessionId, true);
       }
     } catch (error) {
       console.error("Retry task error:", error);

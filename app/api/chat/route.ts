@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
                   buddyName: currentTask.buddy?.name,
                   buddyAvatar: currentTask.buddy?.avatar,
                   skillId,
+                  agentSessionId: currentTask.task.agentSessionId,
                 })}\n\n`
               )
             );

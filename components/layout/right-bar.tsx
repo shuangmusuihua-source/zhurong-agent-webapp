@@ -3,6 +3,16 @@
 import { useState } from "react";
 import type { Product } from "@/lib/types";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -48,6 +58,7 @@ export function RightBar({
   onClosePreview?: () => void;
 }) {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const scrollRef = useScrollHide();
 
   if (collapsed) {
@@ -171,7 +182,7 @@ export function RightBar({
                       <Eye className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => onProductDelete?.(product.id)}
+                      onClick={() => setDeleteTarget({ id: product.id, name: product.name })}
                       className="p-1 rounded hover:bg-sidebar-hover text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -186,6 +197,31 @@ export function RightBar({
           </div>
         )}
       </div>
+      {/* 删除确认对话框 */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除「{deleteTarget?.name}」吗？此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTarget) {
+                  onProductDelete?.(deleteTarget.id);
+                  setDeleteTarget(null);
+                }
+              }}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
