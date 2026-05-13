@@ -221,6 +221,10 @@ export default function Home() {
           });
           setSelectedTaskId(activeTaskData.id);
           loadProducts(id);
+          // running task 时自动连接 SSE 流恢复实时进度
+          if (activeTaskData.status === "running") {
+            connectToTaskStream(activeTaskData.id);
+          }
         } else if (tasks.length > 0) {
           // 默认选中第一个任务
           setSelectedTaskId(tasks[0].id);
@@ -231,6 +235,251 @@ export default function Home() {
       console.error("Failed to load conversation:", error);
     }
   };
+
+  // 共享 SSE 事件处理：handleSendMessage 和 connectToTaskStream 共用
+  const handleSseEvent = useCallback((event: any, assistantMessageId: string) => {
+    if (event.type === "task_started") {
+      setActiveTask({
+        taskId: event.taskId,
+        buddyName: event.buddyName,
+        buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
+        status: "running",
+        toolStatus: undefined,
+        agentSessionId: event.agentSessionId,
+      });
+      setWorkspaceTasks((prev) => {
+        const exists = prev.some((t) => t.id === event.taskId);
+        if (exists) {
+          return prev.map((t) =>
+            t.id === event.taskId ? { ...t, status: "running" } : t
+          );
+        }
+        return [...prev, {
+          id: event.taskId,
+          buddyName: event.buddyName,
+          buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
+          status: "running",
+          createdAt: new Date().toISOString(),
+        }];
+      });
+      setSelectedTaskId(event.taskId);
+    }
+
+    if (event.type === "task_completed") {
+      setActiveTask((prev) =>
+        prev ? { ...prev, status: "completed" } : undefined
+      );
+      setWorkspaceTasks((prev) =>
+        prev.map((t) =>
+          t.id === event.taskId ? { ...t, status: "completed" } : t
+        )
+      );
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.taskId === event.taskId && p.status === "generating"
+            ? { ...p, status: "completed" }
+            : p
+        )
+      );
+      setTimeout(() => setActiveTask(undefined), 500);
+    }
+
+    if (event.type === "task_failed") {
+      setActiveTask((prev) =>
+        prev ? { ...prev, status: "failed" } : undefined
+      );
+      setWorkspaceTasks((prev) =>
+        prev.map((t) =>
+          t.id === event.taskId ? { ...t, status: "failed" } : t
+        )
+      );
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.isStreaming || m.toolStatus
+            ? { ...m, isStreaming: false, toolStatus: undefined, content: m.content || "任务已停止" }
+            : m
+        )
+      );
+    }
+
+    if (event.type === "tool_use") {
+      const label = TOOL_LABELS[event.toolName] || `正在使用 ${event.toolName}...`;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId ? { ...m, toolStatus: label } : m
+        )
+      );
+      setActiveTask((prev) =>
+        prev ? { ...prev, toolStatus: label } : prev
+      );
+    }
+
+    if (event.type === "text_delta") {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? { ...m, content: m.content + event.text, toolStatus: undefined }
+            : m
+        )
+      );
+    }
+
+    if (event.type === "complete") {
+      setConversationId(event.conversationId);
+      if (event.agentSessionId) {
+        setActiveTask((prev) =>
+          prev ? { ...prev, agentSessionId: event.agentSessionId } : prev
+        );
+      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? { ...m, isStreaming: false, toolStatus: undefined }
+            : m
+        )
+      );
+      return "done";
+    }
+
+    if (event.type === "product_created") {
+      setProducts((prev) => [
+        ...prev,
+        {
+          id: event.productId,
+          name: event.name,
+          type: event.productType,
+          taskId: event.taskId,
+          status: event.status ?? "generating",
+        } as Product,
+      ]);
+    }
+
+    if (event.type === "ask_user") {
+      accumulatedAnswersRef.current = {};
+      totalQuestionsRef.current = event.questions?.length ?? 0;
+      setPendingQuestion({ questions: event.questions });
+    }
+
+    if (event.type === "error") {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? { ...m, isStreaming: false, toolStatus: undefined, content: `错误: ${event.message}` }
+            : m
+        )
+      );
+    }
+
+    return "continue";
+  }, []);
+
+  // SSE 重连：重入有 running task 的工作区时，连接 /stream 恢复实时进度
+  const connectToTaskStream = useCallback(async (taskId: string) => {
+    setIsLoading(true);
+    let isSseDone = false;
+    const assistantMessageId = nanoid();
+
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." },
+    ]);
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/stream`);
+      if (!response.ok) {
+        // /stream 返回错误（task 不在 activeTasks 或状态非 running）
+        // 标记 task 为 failed，提示用户重试
+        setActiveTask((prev) =>
+          prev ? { ...prev, status: "failed" } : undefined
+        );
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, isStreaming: false, toolStatus: undefined, content: "任务连接已断开，请点击重试" }
+              : m
+          )
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          sseBuffer += decoder.decode(value, { stream: true });
+          const parts = sseBuffer.split("\n\n");
+          sseBuffer = parts.pop()!;
+
+          for (const part of parts) {
+            for (const line of part.split("\n")) {
+              if (!line.startsWith("data: ")) continue;
+              try {
+                const event = JSON.parse(line.slice(6));
+
+                // 重连快照：恢复累积文本 + 工具状态 + 产物
+                if (event.type === "reconnect_snapshot") {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessageId
+                        ? {
+                            ...m,
+                            content: event.fullText || "",
+                            toolStatus: event.toolStatus,
+                            isStreaming: true,
+                          }
+                        : m
+                    )
+                  );
+                  if (event.products?.length > 0) {
+                    setProducts((prev) => {
+                      const existingIds = new Set(prev.map((p) => p.id));
+                      const newProducts = event.products
+                        .filter((p: any) => !existingIds.has(p.id))
+                        .map((p: any) => ({
+                          id: p.id,
+                          name: p.name,
+                          type: p.type,
+                          taskId,
+                          status: "completed" as const,
+                        }));
+                      return [...prev, ...newProducts];
+                    });
+                  }
+                  continue;
+                }
+
+                const result = handleSseEvent(event, assistantMessageId);
+                if (result === "done") {
+                  isSseDone = true;
+                }
+              } catch {
+                // JSON 解析失败，跳过
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Stream reconnect error:", error);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? { ...m, isStreaming: false, toolStatus: undefined, content: `重连失败: ${error instanceof Error ? error.message : "未知错误"}` }
+            : m
+        )
+      );
+    } finally {
+      if (isSseDone) {
+        setIsLoading(false);
+      }
+    }
+  }, [handleSseEvent]);
 
   const handleSendMessage = async (content: string, resumeSessionId?: string, isRetry?: boolean) => {
     if (!activeWorkspaceId) return;
@@ -354,139 +603,9 @@ export default function Home() {
               if (!line.startsWith("data: ")) continue;
               try {
                 const event = JSON.parse(line.slice(6));
-
-                if (event.type === "task_started") {
-                  setActiveTask({
-                    taskId: event.taskId,
-                    buddyName: event.buddyName,
-                    buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
-                    status: "running",
-                    toolStatus: undefined,
-                    agentSessionId: event.agentSessionId,
-                  });
-                  setWorkspaceTasks((prev) => {
-                    const exists = prev.some((t) => t.id === event.taskId);
-                    if (exists) {
-                      return prev.map((t) =>
-                        t.id === event.taskId ? { ...t, status: "running" } : t
-                      );
-                    }
-                    return [...prev, {
-                      id: event.taskId,
-                      buddyName: event.buddyName,
-                      buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
-                      status: "running",
-                      createdAt: new Date().toISOString(),
-                    }];
-                  });
-                  setSelectedTaskId(event.taskId);
-                }
-
-                if (event.type === "task_completed") {
-                  setActiveTask((prev) =>
-                    prev ? { ...prev, status: "completed" } : undefined
-                  );
-                  setWorkspaceTasks((prev) =>
-                    prev.map((t) =>
-                      t.id === event.taskId ? { ...t, status: "completed" } : t
-                    )
-                  );
-                  setProducts((prev) =>
-                    prev.map((p) =>
-                      p.taskId === event.taskId && p.status === "generating"
-                        ? { ...p, status: "completed" }
-                        : p
-                    )
-                  );
-                  setTimeout(() => setActiveTask(undefined), 500);
-                }
-
-                if (event.type === "task_failed") {
-                  setActiveTask((prev) =>
-                    prev ? { ...prev, status: "failed" } : undefined
-                  );
-                  setWorkspaceTasks((prev) =>
-                    prev.map((t) =>
-                      t.id === event.taskId ? { ...t, status: "failed" } : t
-                    )
-                  );
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.isStreaming || m.toolStatus
-                        ? { ...m, isStreaming: false, toolStatus: undefined, content: m.content || "任务已停止" }
-                        : m
-                    )
-                  );
-                }
-
-                if (event.type === "tool_use") {
-                  const label = TOOL_LABELS[event.toolName] || `正在使用 ${event.toolName}...`;
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMessageId ? { ...m, toolStatus: label } : m
-                    )
-                  );
-                  setActiveTask((prev) =>
-                    prev ? { ...prev, toolStatus: label } : prev
-                  );
-                }
-
-                if (event.type === "text_delta") {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMessageId
-                        ? { ...m, content: m.content + event.text, toolStatus: undefined }
-                        : m
-                    )
-                  );
-                }
-
-                if (event.type === "complete") {
-                  // 最终完成（非追问），关闭 SSE 流
-                  setConversationId(event.conversationId);
-                  if (event.agentSessionId) {
-                    setActiveTask((prev) =>
-                      prev ? { ...prev, agentSessionId: event.agentSessionId } : prev
-                    );
-                  }
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMessageId
-                        ? { ...m, isStreaming: false, toolStatus: undefined }
-                        : m
-                    )
-                  );
-                  // 标记 SSE 流结束，让 finally 不设 isLoading=false
+                const result = handleSseEvent(event, assistantMessageId);
+                if (result === "done") {
                   isSseDone = true;
-                }
-
-                if (event.type === "product_created") {
-                  setProducts((prev) => [
-                    ...prev,
-                    {
-                      id: event.productId,
-                      name: event.name,
-                      type: event.productType,
-                      taskId: event.taskId,
-                      status: event.status ?? "generating",
-                    } as Product,
-                  ]);
-                }
-
-                if (event.type === "ask_user") {
-                  accumulatedAnswersRef.current = {};
-                  totalQuestionsRef.current = event.questions?.length ?? 0;
-                  setPendingQuestion({ questions: event.questions });
-                }
-
-                if (event.type === "error") {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMessageId
-                        ? { ...m, isStreaming: false, toolStatus: undefined, content: `错误: ${event.message}` }
-                        : m
-                    )
-                  );
                 }
               } catch {
                 // JSON 解析失败，跳过

@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth/auth-server";
 import { nanoid } from "nanoid";
 import { createAgentSession, iterateAgentSession } from "@/lib/agent/client";
 import { activeTasks } from "@/lib/agent/active-tasks";
+import { EventBroadcaster, type BufferedEvent } from "@/lib/agent/event-broadcaster";
 import { TOOL_LABELS } from "@/lib/types";
 
 export const maxDuration = 300;
@@ -136,11 +137,12 @@ export async function POST(req: NextRequest) {
       taskId: currentTask?.task.id,
     });
 
-    // 注册到 activeTasks
+    // 注册到 activeTasks（含 EventBroadcaster 支持 SSE 重连）
     if (currentTask) {
       activeTasks.set(currentTask.task.id, {
         query: queryResult,
         abortController,
+        broadcaster: new EventBroadcaster(),
       });
     }
 
@@ -163,12 +165,18 @@ function streamResponse(
 ) {
   const encoder = new TextEncoder();
   let controllerClosed = false;
+  const broadcaster = taskId ? activeTasks.get(taskId)?.broadcaster : undefined;
 
   const send = (data: Record<string, unknown>) => {
     if (controllerClosed) return;
     try {
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
     } catch {}
+  };
+
+  const sendAndBroadcast = (data: BufferedEvent) => {
+    send(data);
+    broadcaster?.broadcast(data);
   };
 
   let controller: ReadableStreamDefaultController<Uint8Array>;
@@ -185,23 +193,29 @@ function streamResponse(
       try {
         // 发送 task_started
         if (taskId) {
-          send({ type: "task_started", taskId });
+          sendAndBroadcast({ type: "task_started", taskId });
         }
 
         let fullText = "";
 
         for await (const event of iterateAgentSession(queryResult)) {
-          if (controllerClosed) break;
+          // 客户端断开后不中断循环，继续迭代和广播
+          // Agent 在 canUseTool 暂停时 for-await 自然阻塞，无 CPU 开销
 
           switch (event.type) {
             case "text_delta":
               fullText += event.text;
-              send({ type: "text_delta", text: event.text });
+              // 更新 accumulatedText，供重连时获取完整文本
+              if (taskId) {
+                const at = activeTasks.get(taskId);
+                if (at) at.accumulatedText = fullText;
+              }
+              sendAndBroadcast({ type: "text_delta", text: event.text });
               break;
 
             case "tool_use": {
               const toolLabel = TOOL_LABELS[event.toolName] ?? event.toolName;
-              send({ type: "tool_use", toolName: event.toolName, toolLabel });
+              sendAndBroadcast({ type: "tool_use", toolName: event.toolName, toolLabel });
               break;
             }
 
@@ -209,10 +223,7 @@ function streamResponse(
               // 检测 AskUserQuestion — canUseTool 已暂停 Agent，这里只发 SSE 通知前端
               if (event.toolName === "AskUserQuestion" || event.toolName === "mcp__AskUserQuestion") {
                 const questions = event.toolInput?.questions ?? event.toolInput;
-                send({ type: "ask_user", questions, toolUseId: event.toolUseId });
-                // 不发 turn_complete，Agent 已被 canUseTool 暂停
-                // SSE 流保持打开，心跳维持连接
-                // 用户回答后 /answer 调 resolve，Agent 继续，后续事件继续推送
+                sendAndBroadcast({ type: "ask_user", questions, toolUseId: event.toolUseId });
               }
 
               // 检测 Write/Edit 创建产物
@@ -237,7 +248,7 @@ function streamResponse(
                       content: filePath,
                       status: "completed",
                     });
-                    send({ type: "product_created", productId, name: fileName, productType: "slides" });
+                    sendAndBroadcast({ type: "product_created", productId, name: fileName, productType: "slides" });
                   } catch (e) {
                     console.error("Failed to create product:", e);
                   }
@@ -272,28 +283,31 @@ function streamResponse(
                 updatedAt: new Date(),
               }).where(eq(conversation.id, conversationId));
 
-              send({ type: "task_completed", agentSessionId: event.agentSessionId });
-              send({ type: "complete" });
+              sendAndBroadcast({ type: "task_completed", agentSessionId: event.agentSessionId });
+              sendAndBroadcast({ type: "complete" });
+              broadcaster?.markComplete();
               break;
             }
 
             case "error":
-              send({ type: "error", message: event.message });
+              sendAndBroadcast({ type: "error", message: event.message });
               if (taskId) {
                 await db.update(task).set({ status: "failed", updatedAt: new Date() }).where(eq(task.id, taskId));
                 activeTasks.delete(taskId);
               }
+              broadcaster?.markComplete();
               break;
           }
         }
       } catch (error) {
         if (!controllerClosed) {
-          send({ type: "error", message: error instanceof Error ? error.message : "Stream error" });
+          sendAndBroadcast({ type: "error", message: error instanceof Error ? error.message : "Stream error" });
           if (taskId) {
             await db.update(task).set({ status: "failed", updatedAt: new Date() }).where(eq(task.id, taskId));
             activeTasks.delete(taskId);
           }
         }
+        broadcaster?.markComplete();
       } finally {
         clearInterval(heartbeat);
         if (!controllerClosed) {
@@ -303,6 +317,8 @@ function streamResponse(
       }
     },
     cancel() {
+      // 客户端断开时只标记 controllerClosed，不中断 for-await 循环
+      // Agent 继续运行，事件继续广播到 broadcaster，供 /stream 重连使用
       controllerClosed = true;
     },
   });

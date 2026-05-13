@@ -8,12 +8,6 @@ sqlite.pragma("journal_mode = WAL");
 
 export const db = drizzle(sqlite, { schema });
 
-// 启动时清理孤儿任务（服务器重启后 running 状态的任务已无进程执行）
-try {
-  const result = sqlite.prepare("UPDATE task SET status = 'failed', updated_at = datetime('now') WHERE status = 'running'").run();
-  if (result.changes > 0) {
-    console.log(`[DB] Cleaned ${result.changes} orphan running task(s)`);
-  }
-} catch {
-  // task 表可能不存在（首次启动），忽略
-}
+// 不清理 orphan running task — SSE 重连依赖 task 保持 running 状态
+// 如果服务重启，activeTasks Map 会清空，但 DB 中的 running 状态应保留
+// 前端重连时如果 activeTasks 中没有对应 task，会提示用户重试

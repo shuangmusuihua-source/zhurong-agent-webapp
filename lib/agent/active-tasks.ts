@@ -1,4 +1,5 @@
 import type { Query } from "@anthropic-ai/claude-agent-sdk";
+import type { EventBroadcaster } from "./event-broadcaster";
 
 // 回调类型：resolve canUseTool 的 Promise，让 Agent 继续执行
 export type QuestionResolve = (result: {
@@ -16,6 +17,10 @@ export interface ActiveTask {
   pendingQuestionResolve?: QuestionResolve;
   // AskUserQuestion 的原始输入（包含 questions），用于构建 updatedInput
   pendingQuestionInput?: Record<string, unknown>;
+  // 事件广播器，支持 SSE 重连
+  broadcaster?: EventBroadcaster;
+  // 累积的完整文本，避免缓冲区裁剪后丢失早期内容
+  accumulatedText?: string;
 }
 
 // taskId → ActiveTask
