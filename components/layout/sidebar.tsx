@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -194,3 +195,5 @@ export function Sidebar({
     </SquircleContainer>
   );
 }
+
+export const MemoizedSidebar = React.memo(Sidebar);

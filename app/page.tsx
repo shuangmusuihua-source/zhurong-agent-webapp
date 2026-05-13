@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { redirect } from "next/navigation";
-import { Sidebar, ChatArea, RightBar, HomePage } from "@/components/layout";
+import { MemoizedSidebar as Sidebar, ChatArea, MemoizedRightBar as RightBar, HomePage } from "@/components/layout";
 import { nanoid } from "nanoid";
 import { authClient } from "@/lib/auth/auth-client";
 import type { Workspace, Message, Product, DigitalBuddy, TaskStatus } from "@/lib/types";
@@ -217,7 +217,7 @@ export default function Home() {
             agentSessionId: activeTaskData.agentSessionId,
           });
           setSelectedTaskId(activeTaskData.id);
-          loadProducts(activeWorkspaceId);
+          loadProducts(id);
         } else if (tasks.length > 0) {
           // 默认选中第一个任务
           setSelectedTaskId(tasks[0].id);

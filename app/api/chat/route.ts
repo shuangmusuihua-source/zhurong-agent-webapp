@@ -36,11 +36,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const userWorkspace = await db
-      .select()
-      .from(workspace)
-      .where(and(eq(workspace.id, workspaceId), eq(workspace.userId, session.user.id)))
-      .limit(1);
+    // 并行查询 workspace 和 running task
+    const [userWorkspace, runningTasks] = await Promise.all([
+      db.select().from(workspace)
+        .where(and(eq(workspace.id, workspaceId), eq(workspace.userId, session.user.id)))
+        .limit(1),
+      db.select({ task: task, buddy: digitalBuddy })
+        .from(task)
+        .leftJoin(digitalBuddy, eq(task.buddyId, digitalBuddy.id))
+        .where(and(eq(task.workspaceId, workspaceId), inArray(task.status, ["running", "pending"])))
+        .limit(1),
+    ]);
 
     if (!userWorkspace[0]) {
       return new Response(JSON.stringify({ error: "Workspace not found" }), {
@@ -48,17 +54,6 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     }
-
-    // 查找当前工作区的 running task
-    const runningTasks = await db
-      .select({
-        task: task,
-        buddy: digitalBuddy,
-      })
-      .from(task)
-      .leftJoin(digitalBuddy, eq(task.buddyId, digitalBuddy.id))
-      .where(and(eq(task.workspaceId, workspaceId), inArray(task.status, ["running", "pending"])))
-      .limit(1);
 
     const currentTask = runningTasks[0];
     const skillId = currentTask?.buddy?.skillId;

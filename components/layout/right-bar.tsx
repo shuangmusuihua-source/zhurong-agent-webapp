@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import type { Product } from "@/lib/types";
 import {
   AlertDialog,
@@ -225,3 +225,5 @@ export function RightBar({
     </div>
   );
 }
+
+export const MemoizedRightBar = React.memo(RightBar);
