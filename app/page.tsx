@@ -616,7 +616,7 @@ export default function Home() {
               <iframe
                 src={`/api/products/${previewProduct.id}?action=preview`}
                 className="w-full h-full rounded-lg border border-border"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts"
                 title={previewProduct.name}
               />
             )}

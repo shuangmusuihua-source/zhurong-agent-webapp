@@ -1,30 +1,49 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { product } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { product, workspace } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
+import { isPathSafe } from "@/lib/utils/path-safety";
+import { auth } from "@/lib/auth/auth-server";
+import { headers } from "next/headers";
 
-// 获取单个产物 / 预览 / 下载
+async function verifyProductOwnership(productId: string, userId: string) {
+  const [item] = await db
+    .select()
+    .from(product)
+    .where(eq(product.id, productId))
+    .limit(1);
+
+  if (!item) return null;
+
+  const [ws] = await db
+    .select()
+    .from(workspace)
+    .where(and(eq(workspace.id, item.workspaceId), eq(workspace.userId, userId)))
+    .limit(1);
+
+  return ws ? item : null;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const action = req.nextUrl.searchParams.get("action"); // 'preview' | 'download'
+  const action = req.nextUrl.searchParams.get("action");
 
   try {
-    const [item] = await db
-      .select()
-      .from(product)
-      .where(eq(product.id, id))
-      .limit(1);
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
+    const item = await verifyProductOwnership(id, session.user.id);
     if (!item) {
       return Response.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // 默认返回产物元数据
     if (!action) {
       return Response.json({ product: item });
     }
@@ -33,9 +52,8 @@ export async function GET(
       return Response.json({ error: "Product has no content" }, { status: 404 });
     }
 
-    // content 可能是文件路径，尝试读取文件内容
     let content = item.content;
-    if (existsSync(item.content)) {
+    if (existsSync(item.content) && isPathSafe(item.content)) {
       try {
         content = await readFile(item.content, "utf-8");
       } catch {
@@ -51,7 +69,7 @@ export async function GET(
           headers: {
             "Content-Type": "text/html; charset=utf-8",
             "Content-Security-Policy":
-              "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';",
+              "default-src 'self' 'unsafe-inline' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';",
             "X-Content-Type-Options": "nosniff",
           },
         });
@@ -62,8 +80,7 @@ export async function GET(
     }
 
     if (action === "download") {
-      const ext = isHtml ? "html" : item.type === "code" ? "ts" : "txt";
-      const filename = `${item.name}.${ext}`;
+      const filename = item.name;
       return new Response(content, {
         headers: {
           "Content-Type": "application/octet-stream",
@@ -75,14 +92,10 @@ export async function GET(
     return Response.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     console.error("Get product error:", error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Server error" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Server error" }, { status: 500 });
   }
 }
 
-// 删除产物
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -90,13 +103,13 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    const [existing] = await db
-      .select()
-      .from(product)
-      .where(eq(product.id, id))
-      .limit(1);
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!existing) {
+    const item = await verifyProductOwnership(id, session.user.id);
+    if (!item) {
       return Response.json({ error: "Product not found" }, { status: 404 });
     }
 
@@ -104,9 +117,6 @@ export async function DELETE(
     return Response.json({ success: true });
   } catch (error) {
     console.error("Delete product error:", error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Server error" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Server error" }, { status: 500 });
   }
 }
