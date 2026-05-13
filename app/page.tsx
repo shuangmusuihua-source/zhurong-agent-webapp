@@ -217,12 +217,11 @@ export default function Home() {
             agentSessionId: activeTaskData.agentSessionId,
           });
           setSelectedTaskId(activeTaskData.id);
-          // 加载该任务的产物
-          loadProducts(activeTaskData.id);
+          loadProducts(activeWorkspaceId);
         } else if (tasks.length > 0) {
           // 默认选中第一个任务
           setSelectedTaskId(tasks[0].id);
-          loadProducts(tasks[0].id);
+          loadProducts(id);
         }
       }
     } catch (error) {
@@ -479,9 +478,9 @@ export default function Home() {
     setPreviewProduct(product as Product);
   };
 
-  const loadProducts = async (taskId: string) => {
+  const loadProducts = async (workspaceId: string) => {
     try {
-      const res = await fetch(`/api/products?taskId=${taskId}`);
+      const res = await fetch(`/api/products?workspaceId=${workspaceId}`);
       if (res.ok) {
         const data = await res.json();
         setProducts(data.products ?? []);
@@ -493,7 +492,7 @@ export default function Home() {
 
   const handleTaskSelect = (taskId: string) => {
     setSelectedTaskId(taskId);
-    loadProducts(taskId);
+    if (activeWorkspaceId) loadProducts(activeWorkspaceId);
   };
 
   const handleDeleteWorkspace = async (workspaceId: string) => {
