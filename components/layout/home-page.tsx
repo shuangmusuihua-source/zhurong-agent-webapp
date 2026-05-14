@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Loader2, ArrowUp } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { SquircleContainer } from "@/components/ui/squircle-container";
+import { ChatInput } from "@/components/ui/chat-input";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
-import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { useHomeStore } from "@/stores/home-store";
 import type { DigitalBuddy, Task } from "@/lib/types";
 import { nanoid } from "nanoid";
@@ -27,10 +27,7 @@ export function HomePage({
   const [input, setInput] = useState("");
   const [recommendedBuddies, setRecommendedBuddies] = useState<DigitalBuddy[]>([]);
   const [sending, setSending] = useState(false);
-  const sendingRef = useRef(false);
-  const [isComposing, setIsComposing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { textareaRef, resize: resizeTextarea } = useAutoResizeTextarea();
   const scrollRef = useScrollHide();
   const isNearBottomRef = useRef(true);
   const scrollRafRef = useRef<number>(0);
@@ -83,10 +80,9 @@ export function HomePage({
   }, [messages]);
 
   const handleSend = async () => {
-    if (sendingRef.current) return;
     const content = input.trim();
     if (!content) return;
-    sendingRef.current = true;
+    setSending(true);
 
     const userMessage: HomeMessage = {
       id: nanoid(),
@@ -95,7 +91,6 @@ export function HomePage({
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setSending(true);
 
     try {
       const res = await fetch("/api/intent", {
@@ -148,7 +143,6 @@ export function HomePage({
         },
       ]);
     } finally {
-      sendingRef.current = false;
       setSending(false);
     }
   };
@@ -285,34 +279,14 @@ export function HomePage({
         </div>
       </div>
 
-      <SquircleContainer cornerRadius={16} className="mx-auto w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-        <textarea
-            ref={textareaRef}
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            resizeTextarea();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !isComposing) {
-              e.preventDefault();
-              if (!sendingRef.current) handleSend();
-            }
-          }}
-          onCompositionStart={() => setIsComposing(true)}
-          onCompositionEnd={() => setIsComposing(false)}
-          placeholder="描述你的需求，我来推荐合适的伙伴..."
-          rows={1}
-          className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || sending}
-          className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
-        >
-          <ArrowUp className="w-4 h-4" />
-        </button>
-      </SquircleContainer>
+      <ChatInput
+        value={input}
+        onChange={setInput}
+        onSend={handleSend}
+        isGenerating={sending}
+        placeholder="描述你的需求，我来推荐合适的伙伴..."
+        className="mx-auto w-[60%]"
+      />
     </div>
   );
 }

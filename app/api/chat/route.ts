@@ -129,11 +129,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 创建新的 AgentSession（canUseTool 机制处理 AskUserQuestion 暂停）
+    const agentAbortController = new AbortController();
     const { queryResult, abortController } = createAgentSession({
       prompt,
       sessionId: resumeSessionId,
       skills: skillId ? [skillId] : "all",
-      abortController: new AbortController(),
+      abortController: agentAbortController,
       taskId: currentTask?.task.id,
     });
 
@@ -141,13 +142,17 @@ export async function POST(req: NextRequest) {
     if (currentTask) {
       activeTasks.set(currentTask.task.id, {
         query: queryResult,
-        abortController,
+        abortController: agentAbortController,
         broadcaster: new EventBroadcaster(),
       });
     }
 
-    return streamResponse(queryResult, currentTask?.task.id, convId!, workspaceId, skillId);
+    return streamResponse(queryResult, currentTask?.task.id, convId!, workspaceId, skillId, req.signal, agentAbortController);
   } catch (error) {
+    const errName = (error as Error)?.name;
+    if (errName === "AbortError" || req.signal.aborted) {
+      return new Response(null, { status: 499 });
+    }
     console.error("Chat error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "Server error" },
@@ -162,6 +167,8 @@ function streamResponse(
   conversationId: string,
   workspaceId: string,
   skillId: string | undefined,
+  requestSignal: AbortSignal,
+  agentAbortController: AbortController,
 ) {
   const encoder = new TextEncoder();
   let controllerClosed = false;
@@ -300,14 +307,16 @@ function streamResponse(
           }
         }
       } catch (error) {
-        // AbortError 是 stop 端点主动终止，DB 更新由 stop 端点处理
+        // 客户端断开或用户主动停止
+        if ((error as Error)?.name === "AbortError" || requestSignal.aborted) {
+          broadcaster?.markComplete();
+          return;
+        }
         // 其他错误需要更新 DB
-        if (!(error instanceof Error && error.name === "AbortError")) {
-          sendAndBroadcast({ type: "error", message: error instanceof Error ? error.message : "Stream error" });
-          if (taskId) {
-            await db.update(task).set({ status: "failed", updatedAt: new Date() }).where(eq(task.id, taskId));
-            activeTasks.delete(taskId);
-          }
+        sendAndBroadcast({ type: "error", message: error instanceof Error ? error.message : "Stream error" });
+        if (taskId) {
+          await db.update(task).set({ status: "failed", updatedAt: new Date() }).where(eq(task.id, taskId));
+          activeTasks.delete(taskId);
         }
         broadcaster?.markComplete();
       } finally {
@@ -319,9 +328,8 @@ function streamResponse(
       }
     },
     cancel() {
-      // 客户端断开时只标记 controllerClosed，不中断 for-await 循环
-      // Agent 继续运行，事件继续广播到 broadcaster，供 /stream 重连使用
       controllerClosed = true;
+      agentAbortController.abort();
     },
   });
 

@@ -2,15 +2,15 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, Globe, Terminal, FileText, Search, ArrowUp, ArrowDownToLine, Square, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Loader2, Globe, Terminal, FileText, Search, ArrowDownToLine, StopCircle, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
 import { computePosition, flip, offset } from "@floating-ui/dom";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
-import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 const MarkdownRenderer = dynamic(
   () => import("@/components/ui/markdown-renderer").then((m) => m.MarkdownRenderer),
   { ssr: false }
 );
 import { SquircleContainer } from "@/components/ui/squircle-container";
+import { ChatInput } from "@/components/ui/chat-input";
 import type { Message, TaskStatus } from "@/lib/types";
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -265,6 +265,7 @@ export function ChatArea({
   activeTask,
   onStopTask,
   onRetryTask,
+  onStopGenerate,
   pendingQuestion,
   onQuestionAnswered,
 }: {
@@ -277,6 +278,7 @@ export function ChatArea({
   activeTask?: TaskInfo;
   onStopTask?: (taskId: string) => void;
   onRetryTask?: (taskId: string) => void;
+  onStopGenerate?: () => void;
   pendingQuestion?: {
     questions: Array<{
       question: string;
@@ -290,10 +292,9 @@ export function ChatArea({
   onQuestionAnswered?: (questionIndex: number, answers: string[]) => void;
 }) {
   const [input, setInput] = useState("");
-  const [isComposing, setIsComposing] = useState(false);
   const sendingRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { textareaRef, resize: resizeTextarea } = useAutoResizeTextarea();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const scrollHideRef = useScrollHide();
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -394,29 +395,14 @@ export function ChatArea({
   }, [showPopover, hidePopover]);
 
   const handleSubmit = () => {
-    if (sendingRef.current) return;
     if (!input.trim() || isLoading) return;
-    sendingRef.current = true;
     onSendMessage(input.trim());
     setInput("");
-    resizeTextarea();
   };
 
   useEffect(() => {
     if (!isLoading) sendingRef.current = false;
   }, [isLoading]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
-      e.preventDefault();
-      if (!sendingRef.current) handleSubmit();
-    }
-  };
-
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    resizeTextarea();
-  };
 
   const isTaskRunning = activeTask?.status === "running";
   const isTaskFailed = activeTask?.status === "failed";
@@ -424,13 +410,11 @@ export function ChatArea({
   const isWaitingForInput = pendingQuestion !== undefined && pendingQuestion.questions.length > 0;
 
   const handleQuestionConfirm = (questionIndex: number, selectedOptions: string[]) => {
-    if (sendingRef.current) return;
     const parts = [...selectedOptions];
     if (input.trim()) {
       parts.push(input.trim());
     }
     if (parts.length > 0) {
-      sendingRef.current = true;
       onQuestionAnswered?.(questionIndex, parts);
       setInput("");
     }
@@ -489,7 +473,7 @@ export function ChatArea({
               onClick={() => onStopTask?.(activeTask.taskId)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0"
             >
-              <Square className="w-3.5 h-3.5" />
+              <StopCircle className="w-3.5 h-3.5" />
               停止
             </button>
           </div>
@@ -517,44 +501,33 @@ export function ChatArea({
               );
             })}
           </div>
-          <SquircleContainer cornerRadius={16} className="flex items-center gap-2 backdrop-blur-sm bg-white/80 dark:bg-chat-bg/80 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-colors">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
-              {activeTask?.buddyAvatar ?? activeTask?.buddyName?.[0] ?? "?"}
-            </div>
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={handleTextareaChange}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !isComposing) {
-                  e.preventDefault();
-                  if (!sendingRef.current && input.trim()) {
-                    handleQuestionConfirm(0, []);
-                  }
-                }
-              }}
-              onCompositionStart={() => setIsComposing(true)}
-              onCompositionEnd={() => setIsComposing(false)}
-              placeholder="也可以直接输入回答..."
-              rows={1}
-              className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
-            />
-            <button
-              onClick={() => {
-                if (input.trim()) {
-                  handleQuestionConfirm(0, []);
-                }
-              }}
-              disabled={!input.trim()}
-              className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
-            >
-              <ArrowUp className="w-4 h-4" />
-            </button>
-          </SquircleContainer>
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSend={() => handleQuestionConfirm(0, [])}
+            isGenerating={isLoading}
+            allowSubmitWhileGenerating
+            placeholder="也可以直接输入回答..."
+            className="backdrop-blur-sm bg-white/80 dark:bg-chat-bg/80"
+            inputRef={textareaRef}
+            leading={
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
+                {activeTask?.buddyAvatar ?? activeTask?.buddyName?.[0] ?? "?"}
+              </div>
+            }
+          />
         </div>
       ) : (
-        <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-          {isTaskFailed && (
+        <ChatInput
+          value={input}
+          onChange={setInput}
+          onSend={handleSubmit}
+          onStop={onStopGenerate}
+          isGenerating={isLoading}
+          inputRef={textareaRef}
+          placeholder={isTaskPending ? `描述你想让${activeTask?.buddyName ?? "伙伴"}完成的任务...` : isTaskFailed ? "输入消息继续，或点击重试..." : "描述你的任务..."}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%]"
+          leading={isTaskFailed ? (
             <button
               onClick={() => onRetryTask?.(activeTask.taskId)}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:bg-sidebar-hover hover:text-foreground transition-colors flex-shrink-0"
@@ -562,26 +535,8 @@ export function ChatArea({
               <RotateCcw className="w-3.5 h-3.5" />
               重试
             </button>
-          )}
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleTextareaChange}
-            onKeyDown={handleKeyDown}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={() => setIsComposing(false)}
-            placeholder={isTaskPending ? `描述你想让${activeTask?.buddyName ?? "伙伴"}完成的任务...` : isTaskFailed ? "输入消息继续，或点击重试..." : "描述你的任务..."}
-            rows={1}
-            className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={!input.trim() || isLoading}
-            className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
-          >
-            <ArrowUp className="w-4 h-4" />
-          </button>
-        </SquircleContainer>
+          ) : undefined}
+        />
       )}
 
       {buddyRecommendations.length > 0 && (

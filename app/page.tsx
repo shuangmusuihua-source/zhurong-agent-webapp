@@ -42,6 +42,32 @@ export default function Home() {
   const totalQuestionsRef = useRef(0);
   const pendingDeltasRef = useRef<Map<string, string>>(new Map());
   const streamingRafRef = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader | null>(null);
+  const stoppedByUserRef = useRef(false);
+
+  const handleStopGenerate = useCallback(() => {
+    stoppedByUserRef.current = true;
+    // 流式阶段：只 cancel reader（触发服务端 cancel() 回调 → abort agent）
+    // 请求阶段：abort fetch（fetch 还没返回时）
+    if (readerRef.current) {
+      try { readerRef.current.cancel(); } catch {}
+      readerRef.current = null;
+    } else if (abortControllerRef.current) {
+      try { abortControllerRef.current.abort(); } catch {}
+      abortControllerRef.current = null;
+    }
+    const chat = useChatStore.getState();
+    const task = useTaskStore.getState();
+    chat.setIsLoading(false);
+    chat.updateMessages((prev) =>
+      prev.map((m) => m.isStreaming ? { ...m, isStreaming: false, toolStatus: undefined, content: m.content || "已停止生成" } : m)
+    );
+    if (task.activeTask?.taskId) {
+      fetch(`/api/tasks/${task.activeTask.taskId}/stop`, { method: "POST" }).catch(() => {});
+      task.updateActiveTask((prev) => prev ? { ...prev, status: "failed" } : undefined);
+    }
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -314,6 +340,8 @@ export default function Home() {
     if (event.type === "complete") {
       cancelAnimationFrame(streamingRafRef.current);
       streamingRafRef.current = 0;
+      abortControllerRef.current = null;
+      readerRef.current = null;
       const remainingDeltas = new Map(pendingDeltasRef.current);
       pendingDeltasRef.current.clear();
       remainingDeltas.forEach((deltaText, msgId) => {
@@ -414,9 +442,17 @@ export default function Home() {
     const task = useTaskStore.getState();
 
     if (!ws.activeWorkspaceId) return;
+    stoppedByUserRef.current = false;
     if (!isRetry) {
       chat.updateMessages((prev) => [...prev, { id: nanoid(), role: "user", content }]);
     }
+    chat.setIsLoading(true);
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    const assistantMessageId = nanoid();
+    let isSseDone = false;
+    chat.updateMessages((prev) => [...prev, { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." }]);
 
     let taskId = task.activeTask?.taskId;
     let buddyId: string | undefined;
@@ -459,22 +495,22 @@ export default function Home() {
           }
         }
       } catch (error) {
+        if (stoppedByUserRef.current) return;
         console.error("Intent recognition failed:", error);
       }
     }
-
-    useChatStore.getState().setIsLoading(true);
-    const assistantMessageId = nanoid();
-    let isSseDone = false;
-    useChatStore.getState().updateMessages((prev) => [...prev, { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." }]);
 
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: content, conversationId: useChatStore.getState().conversationId, workspaceId: ws.activeWorkspaceId, taskId, buddyId, agentSessionId }),
+        signal: abortController.signal,
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        if (stoppedByUserRef.current) return;
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -499,9 +535,12 @@ export default function Home() {
         }
       }
     } catch (error) {
+      if (stoppedByUserRef.current) return;
       console.error("Chat error:", error);
       useChatStore.getState().updateMessages((prev) => prev.map((m) => m.id === assistantMessageId ? { ...m, isStreaming: false, toolStatus: undefined, content: `请求失败: ${error instanceof Error ? error.message : "未知错误"}` } : m));
     } finally {
+      abortControllerRef.current = null;
+      readerRef.current = null;
       if (isSseDone) useChatStore.getState().setIsLoading(false);
     }
   }, [handleSseEvent]);
@@ -646,6 +685,7 @@ export default function Home() {
             activeTask={taskStore.activeTask}
             onStopTask={handleStopTask}
             onRetryTask={handleRetryTask}
+            onStopGenerate={handleStopGenerate}
             pendingQuestion={chatStore.pendingQuestion}
             onQuestionAnswered={handleQuestionAnswered}
           />
