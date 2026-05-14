@@ -71,9 +71,12 @@ export function ChatInput({
   };
 
   return (
+    <div
+      className={`rounded-2xl shadow-[0px_12px_32px_4px_rgba(0,0,0,0.06),0px_8px_20px_rgba(0,0,0,0.1)] dark:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.25),0px_8px_20px_rgba(0,0,0,0.35)] focus-within:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.06),0px_8px_20px_rgba(0,0,0,0.1),0_0_0_2px_rgba(var(--primary),0.25)] dark:focus-within:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.25),0px_8px_20px_rgba(0,0,0,0.35),0_0_0_2px_rgba(var(--primary),0.25)] transition-shadow ${className ?? ""}`}
+    >
     <SquircleContainer
       cornerRadius={16}
-      className={`flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-[0px_12px_32px_4px_rgba(0,0,0,0.04),0px_8px_20px_rgba(0,0,0,0.08)] dark:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.2),0px_8px_20px_rgba(0,0,0,0.3)] focus-within:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.04),0px_8px_20px_rgba(0,0,0,0.08),0_0_0_2px_rgba(var(--primary),0.3)] dark:focus-within:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.2),0px_8px_20px_rgba(0,0,0,0.3),0_0_0_2px_rgba(var(--primary),0.3)] transition-shadow ${className ?? ""}`}
+      className="flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2"
     >
       {leading}
       <textarea
@@ -105,5 +108,6 @@ export function ChatInput({
       )}
       {trailing}
     </SquircleContainer>
+    </div>
   );
 }
