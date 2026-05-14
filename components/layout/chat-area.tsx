@@ -290,6 +290,8 @@ export function ChatArea({
   onQuestionAnswered?: (questionIndex: number, answers: string[]) => void;
 }) {
   const [input, setInput] = useState("");
+  const [isComposing, setIsComposing] = useState(false);
+  const sendingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { textareaRef, resize: resizeTextarea } = useAutoResizeTextarea();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -392,16 +394,22 @@ export function ChatArea({
   }, [showPopover, hidePopover]);
 
   const handleSubmit = () => {
+    if (sendingRef.current) return;
     if (!input.trim() || isLoading) return;
+    sendingRef.current = true;
     onSendMessage(input.trim());
     setInput("");
     resizeTextarea();
   };
 
+  useEffect(() => {
+    if (!isLoading) sendingRef.current = false;
+  }, [isLoading]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
       e.preventDefault();
-      handleSubmit();
+      if (!sendingRef.current) handleSubmit();
     }
   };
 
@@ -416,11 +424,13 @@ export function ChatArea({
   const isWaitingForInput = pendingQuestion !== undefined && pendingQuestion.questions.length > 0;
 
   const handleQuestionConfirm = (questionIndex: number, selectedOptions: string[]) => {
+    if (sendingRef.current) return;
     const parts = [...selectedOptions];
     if (input.trim()) {
       parts.push(input.trim());
     }
     if (parts.length > 0) {
+      sendingRef.current = true;
       onQuestionAnswered?.(questionIndex, parts);
       setInput("");
     }
@@ -516,13 +526,15 @@ export function ChatArea({
               value={input}
               onChange={handleTextareaChange}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey && !isComposing) {
                   e.preventDefault();
-                  if (input.trim()) {
+                  if (!sendingRef.current && input.trim()) {
                     handleQuestionConfirm(0, []);
                   }
                 }
               }}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
               placeholder="也可以直接输入回答..."
               rows={1}
               className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
@@ -556,6 +568,8 @@ export function ChatArea({
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
             placeholder={isTaskPending ? `描述你想让${activeTask?.buddyName ?? "伙伴"}完成的任务...` : isTaskFailed ? "输入消息继续，或点击重试..." : "描述你的任务..."}
             rows={1}
             className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"

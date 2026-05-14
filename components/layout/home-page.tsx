@@ -27,6 +27,8 @@ export function HomePage({
   const [input, setInput] = useState("");
   const [recommendedBuddies, setRecommendedBuddies] = useState<DigitalBuddy[]>([]);
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+  const [isComposing, setIsComposing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { textareaRef, resize: resizeTextarea } = useAutoResizeTextarea();
   const scrollRef = useScrollHide();
@@ -81,8 +83,10 @@ export function HomePage({
   }, [messages]);
 
   const handleSend = async () => {
+    if (sendingRef.current) return;
     const content = input.trim();
-    if (!content || sending) return;
+    if (!content) return;
+    sendingRef.current = true;
 
     const userMessage: HomeMessage = {
       id: nanoid(),
@@ -144,6 +148,7 @@ export function HomePage({
         },
       ]);
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
@@ -289,11 +294,13 @@ export function HomePage({
             resizeTextarea();
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !isComposing) {
               e.preventDefault();
-              handleSend();
+              if (!sendingRef.current) handleSend();
             }
           }}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
           placeholder="描述你的需求，我来推荐合适的伙伴..."
           rows={1}
           className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-[120px]"
