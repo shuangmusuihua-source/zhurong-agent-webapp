@@ -72,7 +72,7 @@ export function ChatInput({
 
   return (
     <div
-      className={`rounded-[20px] shadow-[0px_12px_32px_4px_rgba(0,0,0,0.06),0px_8px_20px_rgba(0,0,0,0.1)] dark:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.25),0px_8px_20px_rgba(0,0,0,0.35)] focus-within:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.06),0px_8px_20px_rgba(0,0,0,0.1),0_0_0_2px_rgba(var(--primary),0.25)] dark:focus-within:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.25),0px_8px_20px_rgba(0,0,0,0.35),0_0_0_2px_rgba(var(--primary),0.25)] transition-shadow ${className ?? ""}`}
+      className={`rounded-[20px] shadow-[0px_12px_32px_4px_rgba(35,69,94,0.04),0px_8px_20px_rgba(35,69,94,0.08)] dark:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.2),0px_8px_20px_rgba(0,0,0,0.3)] focus-within:shadow-[0px_12px_32px_4px_rgba(35,69,94,0.04),0px_8px_20px_rgba(35,69,94,0.08),0_4px_12px_rgba(35,69,94,0.3)] dark:focus-within:shadow-[0px_12px_32px_4px_rgba(0,0,0,0.2),0px_8px_20px_rgba(0,0,0,0.3),0_4px_12px_rgba(35,69,94,0.2)] transition-shadow ${className ?? ""}`}
     >
     <SquircleContainer
       cornerRadius={22}
