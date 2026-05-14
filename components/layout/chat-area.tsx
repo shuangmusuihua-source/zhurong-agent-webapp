@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Loader2, ArrowDownToLine, StopCircle, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Loader2, Search, ArrowDownToLine, StopCircle, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
 import { computePosition, flip, offset } from "@floating-ui/dom";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
 import { SquircleContainer } from "@/components/ui/squircle-container";
