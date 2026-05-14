@@ -165,64 +165,43 @@ export function HomePage({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-stretch">
-            {homeStore.buddies.map((buddy) => (
-              <button
-                key={buddy.id}
-                onClick={() => onSelectBuddy(buddy)}
-                className="text-left w-full h-full"
-              >
-                <SquircleContainer
-                  cornerRadius={16}
-                  className="flex flex-col items-start p-5 bg-secondary/50 hover:bg-primary/5 transition-all text-left group h-full"
+          {messages.length === 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-stretch">
+              {homeStore.buddies.map((buddy) => (
+                <button
+                  key={buddy.id}
+                  onClick={() => onSelectBuddy(buddy)}
+                  className="text-left w-full h-full"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-lg font-bold mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-colors">
-                    {buddy.name[0]}
-                  </div>
-                  <h3 className="text-sm font-semibold mb-1">{buddy.name}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {buddy.description}
-                  </p>
-                  {(() => {
-                    const tags = typeof buddy.tags === "string" ? JSON.parse(buddy.tags as string) : buddy.tags;
-                    return tags && tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {tags.map((tag: string) => (
-                          <span
-                            key={tag}
-                            className="px-2 py-0.5 rounded-md bg-secondary text-[11px] text-muted-foreground"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </SquircleContainer>
-              </button>
-            ))}
-          </div>
-
-          {recommendedBuddies.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-sm font-semibold mb-3">推荐伙伴</h2>
-              <div className="flex flex-col gap-2">
-                {recommendedBuddies.map((buddy) => (
-                  <button
-                    key={buddy.id}
-                    onClick={() => onSelectBuddy(buddy)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors text-left"
+                  <SquircleContainer
+                    cornerRadius={16}
+                    className="flex flex-col items-start p-5 bg-secondary/50 hover:bg-primary/5 transition-all text-left group h-full"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-lg font-bold mb-3 group-hover:from-primary/30 group-hover:to-primary/10 transition-colors">
                       {buddy.name[0]}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold">{buddy.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{buddy.description}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                    <h3 className="text-sm font-semibold mb-1">{buddy.name}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {buddy.description}
+                    </p>
+                    {(() => {
+                      const tags = typeof buddy.tags === "string" ? JSON.parse(buddy.tags as string) : buddy.tags;
+                      return tags && tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {tags.map((tag: string) => (
+                            <span
+                              key={tag}
+                              className="px-2 py-0.5 rounded-md bg-secondary text-[11px] text-muted-foreground"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </SquircleContainer>
+                </button>
+              ))}
             </div>
           )}
 
@@ -237,6 +216,26 @@ export function HomePage({
 
                   </div>
       </div>
+
+      {recommendedBuddies.length > 0 && messages.length > 0 && (
+        <div className="absolute bottom-16 left-0 right-0 px-5 py-3 backdrop-blur-sm bg-chat-bg/80">
+          <p className="text-xs text-muted-foreground mb-2">推荐伙伴</p>
+          <div className="flex gap-2">
+            {recommendedBuddies.map((buddy) => (
+              <button
+                key={buddy.id}
+                onClick={() => onSelectBuddy(buddy)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors text-sm"
+              >
+                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-xs font-bold">
+                  {buddy.name[0]}
+                </div>
+                <span>{buddy.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <ChatInput
         value={input}
