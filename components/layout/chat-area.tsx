@@ -9,8 +9,6 @@ import { ChatInput } from "@/components/ui/chat-input";
 import { MessageBubble } from "@/components/ui/message-bubble";
 import type { Message, TaskStatus } from "@/lib/types";
 
-import type { Message, TaskStatus } from "@/lib/types";
-
 interface TaskInfo {
   taskId: string;
   buddyName?: string;
