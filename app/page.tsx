@@ -57,6 +57,9 @@ export default function Home() {
   // 累积所有问题的回答，全部回答完才 resolve canUseTool Promise
   const accumulatedAnswersRef = useRef<Record<string, string>>({});
   const totalQuestionsRef = useRef(0);
+  // 流式 text_delta 节流：累积 delta，每帧最多一次 setMessages
+  const pendingDeltasRef = useRef<Map<string, string>>(new Map());
+  const streamingRafRef = useRef<number>(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -76,6 +79,11 @@ export default function Home() {
       }
     };
     checkAuth();
+  }, []);
+
+  // Cleanup streaming RAF on unmount
+  useEffect(() => {
+    return () => cancelAnimationFrame(streamingRafRef.current);
   }, []);
 
   const loadWorkspaces = async () => {
@@ -317,16 +325,44 @@ export default function Home() {
     }
 
     if (event.type === "text_delta") {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId
-            ? { ...m, content: m.content + event.text, toolStatus: undefined }
-            : m
-        )
+      // 累积 delta，用 rAF 合并更新，每帧最多一次 setMessages
+      pendingDeltasRef.current.set(
+        assistantMessageId,
+        (pendingDeltasRef.current.get(assistantMessageId) ?? "") + event.text
       );
+      if (!streamingRafRef.current) {
+        streamingRafRef.current = requestAnimationFrame(() => {
+          const deltas = new Map(pendingDeltasRef.current);
+          pendingDeltasRef.current.clear();
+          streamingRafRef.current = 0;
+          deltas.forEach((deltaText, msgId) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === msgId
+                  ? { ...m, content: m.content + deltaText, toolStatus: undefined }
+                  : m
+              )
+            );
+          });
+        });
+      }
     }
 
     if (event.type === "complete") {
+      // Flush remaining deltas before marking complete
+      cancelAnimationFrame(streamingRafRef.current);
+      streamingRafRef.current = 0;
+      const remainingDeltas = new Map(pendingDeltasRef.current);
+      pendingDeltasRef.current.clear();
+      remainingDeltas.forEach((deltaText, msgId) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId
+              ? { ...m, content: m.content + deltaText }
+              : m
+          )
+        );
+      });
       setConversationId(event.conversationId);
       if (event.agentSessionId) {
         setActiveTask((prev) =>

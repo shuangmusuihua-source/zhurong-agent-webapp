@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { Loader2, Globe, Terminal, FileText, Search, ArrowUp, ArrowDownToLine, Square, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
 import { computePosition, flip, offset } from "@floating-ui/dom";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
-import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+const MarkdownRenderer = dynamic(
+  () => import("@/components/ui/markdown-renderer").then((m) => m.MarkdownRenderer),
+  { ssr: false }
+);
 import { SquircleContainer } from "@/components/ui/squircle-container";
 import type { Message, TaskStatus } from "@/lib/types";
 
