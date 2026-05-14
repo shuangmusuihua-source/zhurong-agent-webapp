@@ -94,7 +94,7 @@ export default function Home() {
     }
   };
 
-  const handleCreateWorkspace = async () => {
+  const handleCreateWorkspace = useCallback(async () => {
     if (!newWorkspaceName.trim()) return;
 
     try {
@@ -125,9 +125,9 @@ export default function Home() {
       console.error("Failed to create workspace:", error);
       alert("创建失败");
     }
-  };
+  }, [newWorkspaceName]);
 
-  const handleCreateWorkspaceWithBuddy = async (buddy: DigitalBuddy) => {
+  const handleCreateWorkspaceWithBuddy = useCallback(async (buddy: DigitalBuddy) => {
     try {
       const wsRes = await fetch("/api/workspaces", {
         method: "POST",
@@ -167,9 +167,9 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to create workspace with buddy:", error);
     }
-  };
+  }, []);
 
-  const handleSelectWorkspace = async (id: string) => {
+  const handleSelectWorkspace = useCallback(async (id: string) => {
     setActiveWorkspaceId(id);
     setActiveView("workspace");
     setMessages([]);
@@ -236,7 +236,7 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to load conversation:", error);
     }
-  };
+  }, [activeWorkspaceId, conversationId]);
 
   // 共享 SSE 事件处理：handleSendMessage 和 connectToTaskStream 共用
   const handleSseEvent = useCallback((event: any, assistantMessageId: string) => {
@@ -483,7 +483,7 @@ export default function Home() {
     }
   }, [handleSseEvent]);
 
-  const handleSendMessage = async (content: string, resumeSessionId?: string, isRetry?: boolean) => {
+  const handleSendMessage = useCallback(async (content: string, resumeSessionId?: string, isRetry?: boolean) => {
     if (!activeWorkspaceId) return;
 
     if (!isRetry) {
@@ -630,16 +630,15 @@ export default function Home() {
         setIsLoading(false);
       }
     }
-  };
+  }, [activeWorkspaceId, conversationId, activeTask, handleSseEvent]);
 
-  const handleStopTask = async (taskId: string) => {
+  const handleStopTask = useCallback(async (taskId: string) => {
     try {
       await fetch(`/api/tasks/${taskId}/stop`, { method: "POST" });
       setActiveTask((prev) =>
         prev ? { ...prev, status: "failed" } : undefined
       );
       setIsLoading(false);
-      // 清除流式消息的 toolStatus 和 isStreaming
       setMessages((prev) =>
         prev.map((m) =>
           m.isStreaming || m.toolStatus
@@ -655,9 +654,9 @@ export default function Home() {
     } catch (error) {
       console.error("Stop task error:", error);
     }
-  };
+  }, []);
 
-  const handleRetryTask = async (taskId: string) => {
+  const handleRetryTask = useCallback(async (taskId: string) => {
     try {
       const res = await fetch(`/api/tasks/${taskId}/retry`, { method: "POST" });
       if (res.ok) {
@@ -665,20 +664,19 @@ export default function Home() {
         setActiveTask((prev) =>
           prev ? { ...prev, status: "pending", toolStatus: undefined, agentSessionId: updatedTask?.agentSessionId } : undefined
         );
-        // 如果有 agentSessionId，用 resume 保持上下文连续
         const originalPrompt = messages.find((m) => m.role === "user")?.content ?? "继续执行";
         handleSendMessage(originalPrompt, updatedTask?.agentSessionId, true);
       }
     } catch (error) {
       console.error("Retry task error:", error);
     }
-  };
+  }, [messages, handleSendMessage]);
 
-  const handleProductClick = (product: { id: string; name: string }) => {
+  const handleProductClick = useCallback((product: { id: string; name: string }) => {
     setPreviewProduct(product as Product);
-  };
+  }, []);
 
-  const loadProducts = async (workspaceId: string) => {
+  const loadProducts = useCallback(async (workspaceId: string) => {
     try {
       const res = await fetch(`/api/products?workspaceId=${workspaceId}`);
       if (res.ok) {
@@ -688,14 +686,14 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to load products:", error);
     }
-  };
+  }, []);
 
-  const handleTaskSelect = (taskId: string) => {
+  const handleTaskSelect = useCallback((taskId: string) => {
     setSelectedTaskId(taskId);
     if (activeWorkspaceId) loadProducts(activeWorkspaceId);
-  };
+  }, [activeWorkspaceId, loadProducts]);
 
-  const handleDeleteWorkspace = async (workspaceId: string) => {
+  const handleDeleteWorkspace = useCallback(async (workspaceId: string) => {
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}`, { method: "DELETE" });
       if (res.ok) {
@@ -714,7 +712,54 @@ export default function Home() {
       console.error("Delete workspace error:", error);
     }
     setDeleteWorkspaceId(undefined);
-  };
+  }, [activeWorkspaceId]);
+
+  const handleHomeSelect = useCallback(() => setActiveView("home"), []);
+  const handleWorkspaceCreateDialog = useCallback(() => setCreateDialogOpen(true), []);
+  const handleWorkspaceDeleteDialog = useCallback((id: string) => setDeleteWorkspaceId(id), []);
+  const handleSidebarToggle = useCallback(() => setSidebarCollapsed((v) => !v), []);
+  const handleRightBarToggle = useCallback(() => setRightBarCollapsed((v) => !v), []);
+
+  const handleProductDelete = useCallback(async (productId: string) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
+      if (res.ok) {
+        setProducts((prev) => prev.filter((p) => p.id !== productId));
+      }
+    } catch (error) {
+      console.error("Delete product error:", error);
+    }
+  }, []);
+
+  const handleQuestionAnswered = useCallback((questionIndex: number, answers: string[]) => {
+    if (!activeTask?.taskId) return;
+    const q = pendingQuestion?.questions[questionIndex];
+    if (q) {
+      accumulatedAnswersRef.current[q.question] = answers.join(", ");
+    }
+    setMessages((prev) => [...prev, { id: nanoid(), role: "user", content: answers.join(", ") }]);
+
+    const totalQuestions = totalQuestionsRef.current;
+    const answeredCount = Object.keys(accumulatedAnswersRef.current).length;
+
+    if (answeredCount < totalQuestions) {
+      setPendingQuestion((prev) => {
+        if (!prev) return undefined;
+        const remaining = prev.questions.filter((_, i) => i !== questionIndex);
+        return remaining.length > 0 ? { ...prev, questions: remaining } : undefined;
+      });
+      return;
+    }
+
+    const allAnswers = { ...accumulatedAnswersRef.current };
+    accumulatedAnswersRef.current = {};
+    setPendingQuestion(undefined);
+    fetch(`/api/tasks/${activeTask.taskId}/answer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers: allAnswers, conversationId }),
+    }).catch((error) => console.error("Answer injection failed:", error));
+  }, [activeTask, pendingQuestion, conversationId]);
 
   if (isLoadingAuth) {
     return (
@@ -734,11 +779,11 @@ export default function Home() {
         activeWorkspaceId={activeWorkspaceId}
         activeView={activeView}
         onWorkspaceSelect={handleSelectWorkspace}
-        onHomeSelect={() => setActiveView("home")}
-        onWorkspaceCreate={() => setCreateDialogOpen(true)}
-        onWorkspaceDelete={(id) => setDeleteWorkspaceId(id)}
+        onHomeSelect={handleHomeSelect}
+        onWorkspaceCreate={handleWorkspaceCreateDialog}
+        onWorkspaceDelete={handleWorkspaceDeleteDialog}
         collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggleCollapse={handleSidebarToggle}
       />
 
       {activeView === "home" ? (
@@ -757,40 +802,7 @@ export default function Home() {
             onStopTask={handleStopTask}
             onRetryTask={handleRetryTask}
             pendingQuestion={pendingQuestion}
-            onQuestionAnswered={(questionIndex: number, answers: string[]) => {
-              if (!activeTask?.taskId) return;
-              // 累积回答
-              const q = pendingQuestion?.questions[questionIndex];
-              if (q) {
-                accumulatedAnswersRef.current[q.question] = answers.join(", ");
-              }
-              // 添加用户消息到本地 state
-              setMessages((prev) => [...prev, { id: nanoid(), role: "user", content: answers.join(", ") }]);
-
-              // 检查是否所有问题都回答完了（用原始问题数量，不是当前剩余数量）
-              const totalQuestions = totalQuestionsRef.current;
-              const answeredCount = Object.keys(accumulatedAnswersRef.current).length;
-
-              if (answeredCount < totalQuestions) {
-                // 还有问题没回答，只移除已回答的 question
-                setPendingQuestion((prev) => {
-                  if (!prev) return undefined;
-                  const remaining = prev.questions.filter((_, i) => i !== questionIndex);
-                  return remaining.length > 0 ? { ...prev, questions: remaining } : undefined;
-                });
-                return;
-              }
-
-              // 所有问题都回答完了，清空状态，resolve canUseTool Promise
-              const allAnswers = { ...accumulatedAnswersRef.current };
-              accumulatedAnswersRef.current = {};
-              setPendingQuestion(undefined);
-              fetch(`/api/tasks/${activeTask.taskId}/answer`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ answers: allAnswers, conversationId }),
-              }).catch((error) => console.error("Answer injection failed:", error));
-            }}
+            onQuestionAnswered={handleQuestionAnswered}
           />
           <RightBar
             tasks={workspaceTasks}
@@ -809,7 +821,7 @@ export default function Home() {
               }
             }}
             collapsed={rightBarCollapsed}
-            onToggleCollapse={() => setRightBarCollapsed(!rightBarCollapsed)}
+            onToggleCollapse={handleRightBarToggle}
           />
         </>
       )}
