@@ -5,6 +5,7 @@ import { Loader2, ArrowUp } from "lucide-react";
 import { SquircleContainer } from "@/components/ui/squircle-container";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
 import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
+import { useHomeStore } from "@/stores/home-store";
 import type { DigitalBuddy, Task } from "@/lib/types";
 import { nanoid } from "nanoid";
 
@@ -21,9 +22,7 @@ export function HomePage({
   onSelectBuddy: (buddy: DigitalBuddy) => void;
   onTaskClick?: (workspaceId: string) => void;
 }) {
-  const [buddies, setBuddies] = useState<DigitalBuddy[]>([]);
-  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const homeStore = useHomeStore();
   const [messages, setMessages] = useState<HomeMessage[]>([]);
   const [input, setInput] = useState("");
   const [recommendedBuddies, setRecommendedBuddies] = useState<DigitalBuddy[]>([]);
@@ -35,28 +34,29 @@ export function HomePage({
   const scrollRafRef = useRef<number>(0);
 
   useEffect(() => {
+    if (homeStore.loaded) return;
     async function loadData() {
       try {
         const [buddiesRes, tasksRes] = await Promise.all([
           fetch("/api/buddies"),
           fetch("/api/tasks?recent=true"),
         ]);
+        const store = useHomeStore.getState();
         if (buddiesRes.ok) {
           const data = await buddiesRes.json();
-          setBuddies(data.buddies);
+          store.setBuddies(data.buddies);
         }
         if (tasksRes.ok) {
           const data = await tasksRes.json();
-          setRecentTasks(data.tasks || []);
+          store.setRecentTasks(data.tasks || []);
         }
+        store.setLoaded(true);
       } catch (error) {
         console.error("Failed to load home data:", error);
-      } finally {
-        setLoading(false);
       }
     }
     loadData();
-  }, []);
+  }, [homeStore.loaded]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -104,7 +104,7 @@ export function HomePage({
         const data = await res.json();
 
         if (data.needsBuddy && data.buddyIds.length > 0) {
-          const recommended = buddies.filter((b) => data.buddyIds.includes(b.id));
+          const recommended = homeStore.buddies.filter((b) => data.buddyIds.includes(b.id));
           setRecommendedBuddies(recommended);
           setMessages((prev) => [
             ...prev,
@@ -148,7 +148,7 @@ export function HomePage({
     }
   };
 
-  if (loading) {
+  if (!homeStore.loaded) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -171,7 +171,7 @@ export function HomePage({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-stretch">
-            {buddies.map((buddy) => (
+            {homeStore.buddies.map((buddy) => (
               <button
                 key={buddy.id}
                 onClick={() => onSelectBuddy(buddy)}
@@ -253,11 +253,11 @@ export function HomePage({
             </div>
           )}
 
-          {recentTasks.length > 0 && (
+          {homeStore.recentTasks.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold mb-3">最近任务</h2>
               <div className="flex flex-col gap-2">
-                {recentTasks.map((task) => (
+                {homeStore.recentTasks.map((task) => (
                   <button
                     key={task.id}
                     onClick={() => onTaskClick?.(task.workspaceId)}

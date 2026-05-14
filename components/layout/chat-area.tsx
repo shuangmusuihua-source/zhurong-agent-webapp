@@ -302,7 +302,6 @@ export function ChatArea({
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    // Measure initial position (handles loaded conversations)
     const { scrollTop, scrollHeight, clientHeight } = container;
     isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
     const handleScroll = () => {
@@ -416,7 +415,6 @@ export function ChatArea({
   const isTaskPending = activeTask?.status === "pending";
   const isWaitingForInput = pendingQuestion !== undefined && pendingQuestion.questions.length > 0;
 
-  // 追问确认：合并选项 + 输入框文字，带 questionIndex
   const handleQuestionConfirm = (questionIndex: number, selectedOptions: string[]) => {
     const parts = [...selectedOptions];
     if (input.trim()) {
@@ -465,7 +463,6 @@ export function ChatArea({
 
       {/* 底部区域：三种形态 */}
       {isTaskRunning && !isWaitingForInput ? (
-        /* 形态 2：执行中 — 伙伴名 + 工具状态 + 停止按钮 */
         <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-5 right-5 backdrop-blur-sm bg-white/80 dark:bg-chat-bg/80 px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
@@ -488,9 +485,7 @@ export function ChatArea({
           </div>
         </SquircleContainer>
       ) : isWaitingForInput ? (
-        /* 形态 3：追问 — QuestionCard + 输入框兜底 + 确认按钮 */
         <div className="absolute bottom-4 left-5 right-5 flex flex-col gap-2">
-          {/* QuestionCard 可滚动区域 */}
           <div className="max-h-[45vh] overflow-y-auto space-y-2 pr-1">
             {pendingQuestion!.questions.map((q, qi) => {
               if (q.type === "outline" && q.items) {
@@ -512,7 +507,6 @@ export function ChatArea({
               );
             })}
           </div>
-          {/* 输入框兜底 */}
           <SquircleContainer cornerRadius={16} className="flex items-center gap-2 backdrop-blur-sm bg-white/80 dark:bg-chat-bg/80 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-colors">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
               {activeTask?.buddyAvatar ?? activeTask?.buddyName?.[0] ?? "?"}
@@ -547,7 +541,6 @@ export function ChatArea({
           </SquircleContainer>
         </div>
       ) : (
-        /* 形态 1：空闲/失败 — 普通输入框 + 重试按钮 */
         <SquircleContainer cornerRadius={16} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           {isTaskFailed && (
             <button

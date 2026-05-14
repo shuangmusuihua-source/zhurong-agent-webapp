@@ -7,6 +7,10 @@ import { nanoid } from "nanoid";
 import { authClient } from "@/lib/auth/auth-client";
 import type { Workspace, Message, Product, DigitalBuddy, TaskStatus } from "@/lib/types";
 import { TOOL_LABELS } from "@/lib/types";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useChatStore } from "@/stores/chat-store";
+import { useTaskStore, type TaskInfo } from "@/stores/task-store";
+import { useHomeStore } from "@/stores/home-store";
 import {
   Dialog,
   DialogContent,
@@ -16,48 +20,26 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-interface TaskInfo {
-  taskId: string;
-  buddyName?: string;
-  buddyAvatar?: string;
-  status: TaskStatus;
-  toolStatus?: string;
-  agentSessionId?: string;
-}
-
 export default function Home() {
   const [user, setUser] = useState<{ id: string; name?: string; email?: string } | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<"home" | "workspace">("home");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | undefined>();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [rightBarCollapsed, setRightBarCollapsed] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
-  const [activeTask, setActiveTask] = useState<TaskInfo | undefined>();
-  const [workspaceTasks, setWorkspaceTasks] = useState<Array<{ id: string; buddyName?: string; buddyAvatar?: string; status: string; createdAt: string }>>([]);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>();
   const [previewProduct, setPreviewProduct] = useState<Product | undefined>();
   const [deleteWorkspaceId, setDeleteWorkspaceId] = useState<string | undefined>();
-  const [pendingQuestion, setPendingQuestion] = useState<{
-    questions: Array<{
-      question: string;
-      header: string;
-      options?: Array<{ label: string; description?: string }>;
-      multiSelect?: boolean;
-      type?: "options" | "outline";
-      items?: string[];
-    }>;
-  } | undefined>();
-  // 累积所有问题的回答，全部回答完才 resolve canUseTool Promise
+
+  // Zustand stores — used for rendering (reading state + passing as props)
+  const wsStore = useWorkspaceStore();
+  const chatStore = useChatStore();
+  const taskStore = useTaskStore();
+
+  const handleHomeSelect = useCallback(() => useWorkspaceStore.getState().setActiveView("home"), []);
+  const handleWorkspaceCreateDialog = useCallback(() => setCreateDialogOpen(true), []);
+  const handleWorkspaceDeleteDialog = useCallback((id: string) => setDeleteWorkspaceId(id), []);
+
+  // Refs for SSE streaming and question accumulation
   const accumulatedAnswersRef = useRef<Record<string, string>>({});
   const totalQuestionsRef = useRef(0);
-  // 流式 text_delta 节流：累积 delta，每帧最多一次 setMessages
   const pendingDeltasRef = useRef<Map<string, string>>(new Map());
   const streamingRafRef = useRef<number>(0);
 
@@ -81,7 +63,6 @@ export default function Home() {
     checkAuth();
   }, []);
 
-  // Cleanup streaming RAF on unmount
   useEffect(() => {
     return () => cancelAnimationFrame(streamingRafRef.current);
   }, []);
@@ -92,9 +73,10 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
         const ws = data.workspaces || [];
-        setWorkspaces(ws);
-        if (ws.length > 0 && !activeWorkspaceId) {
-          setActiveWorkspaceId(ws[0].id);
+        const store = useWorkspaceStore.getState();
+        store.setWorkspaces(ws);
+        if (ws.length > 0 && !store.activeWorkspaceId) {
+          store.setActiveWorkspaceId(ws[0].id);
         }
       }
     } catch (error) {
@@ -104,27 +86,30 @@ export default function Home() {
 
   const handleCreateWorkspace = useCallback(async () => {
     if (!newWorkspaceName.trim()) return;
-
     try {
       const response = await fetch("/api/workspaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newWorkspaceName.trim() }),
       });
-
       if (response.ok) {
         const data = await response.json();
         const newWorkspace = data.workspace;
-        setWorkspaces((prev) => [...prev, newWorkspace]);
-        setActiveWorkspaceId(newWorkspace.id);
-        setActiveView("workspace");
-        setMessages([]);
-        setProducts([]);
-        setActiveTask(undefined);
+        const ws = useWorkspaceStore.getState();
+        const chat = useChatStore.getState();
+        const task = useTaskStore.getState();
+        ws.addWorkspace(newWorkspace);
+        useHomeStore.getState().invalidate();
+        ws.setActiveWorkspaceId(newWorkspace.id);
+        ws.setActiveView("workspace");
+        chat.setMessages([]);
+        chat.setProducts([]);
+        chat.setConversationId(undefined);
+        task.setActiveTask(undefined);
+        task.setWorkspaceTasks([]);
+        task.setSelectedTaskId(undefined);
         setCreateDialogOpen(false);
         setNewWorkspaceName("");
-        setWorkspaceTasks([]);
-        setSelectedTaskId(undefined);
       } else {
         const error = await response.json();
         alert(error.error || "创建失败");
@@ -154,102 +139,119 @@ export default function Home() {
       if (!taskRes.ok) throw new Error("创建任务失败");
       const taskData = await taskRes.json();
 
-      setWorkspaces((prev) => [wsData.workspace, ...prev]);
-      setActiveWorkspaceId(workspaceId);
-      setActiveView("workspace");
-      setActiveTask({
+      const ws = useWorkspaceStore.getState();
+      const task = useTaskStore.getState();
+      ws.addWorkspace(wsData.workspace);
+      useHomeStore.getState().invalidate();
+      ws.setActiveWorkspaceId(workspaceId);
+      ws.setActiveView("workspace");
+      task.setActiveTask({
         taskId: taskData.task.id,
         buddyName: buddy.name,
         buddyAvatar: buddy.name[0],
         status: "pending",
         agentSessionId: undefined,
       });
-      setWorkspaceTasks([{
+      task.setWorkspaceTasks([{
         id: taskData.task.id,
         buddyName: buddy.name,
         buddyAvatar: buddy.name[0],
         status: "pending",
         createdAt: taskData.task.createdAt,
       }]);
-      setSelectedTaskId(taskData.task.id);
+      task.setSelectedTaskId(taskData.task.id);
     } catch (error) {
       console.error("Failed to create workspace with buddy:", error);
     }
   }, []);
 
+  const loadProducts = useCallback(async (workspaceId: string) => {
+    try {
+      const res = await fetch(`/api/products?workspaceId=${workspaceId}`);
+      if (res.ok) {
+        const data = await res.json();
+        useChatStore.getState().setProducts(data.products ?? []);
+      }
+    } catch (error) {
+      console.error("Failed to load products:", error);
+    }
+  }, []);
+
   const handleSelectWorkspace = useCallback(async (id: string) => {
-    setActiveWorkspaceId(id);
-    setActiveView("workspace");
-    setMessages([]);
-    setProducts([]);
-    setConversationId(undefined);
-    setActiveTask(undefined);
-    setWorkspaceTasks([]);
-    setSelectedTaskId(undefined);
+    const ws = useWorkspaceStore.getState();
+    const chat = useChatStore.getState();
+    const task = useTaskStore.getState();
+    ws.setActiveWorkspaceId(id);
+    ws.setActiveView("workspace");
+    chat.setMessages([]);
+    chat.setProducts([]);
+    chat.setConversationId(undefined);
+    chat.setIsLoading(false);
+    task.setActiveTask(undefined);
+    task.setWorkspaceTasks([]);
+    task.setSelectedTaskId(undefined);
 
     try {
       const response = await fetch(`/api/chat?workspaceId=${id}`);
       if (response.ok) {
         const data = await response.json();
-
         if (data.conversations && data.conversations.length > 0) {
           const latestConversation = data.conversations[0];
-
           const messagesResponse = await fetch(`/api/messages?conversationId=${latestConversation.id}`);
           if (messagesResponse.ok) {
             const messagesData = await messagesResponse.json();
-
-            setMessages(
+            useChatStore.getState().setMessages(
               messagesData.messages.map((m: { id: string; role: string; content: string }) => ({
                 id: m.id,
                 role: m.role as Message["role"],
                 content: m.content,
               }))
             );
-            setConversationId(latestConversation.id);
+            useChatStore.getState().setConversationId(latestConversation.id);
           }
         }
       }
 
-      // 加载工作区的任务列表
       const tasksRes = await fetch(`/api/tasks?workspaceId=${id}`);
       if (tasksRes.ok) {
         const tasksData = await tasksRes.json();
         const tasks = tasksData.tasks ?? [];
-        setWorkspaceTasks(tasks);
+        const taskS = useTaskStore.getState();
+        taskS.setWorkspaceTasks(tasks);
 
         const activeTaskData = tasks.find(
           (t: { status: string }) => t.status === "running" || t.status === "pending"
         );
         if (activeTaskData) {
-          setActiveTask({
+          taskS.setActiveTask({
             taskId: activeTaskData.id,
             buddyName: activeTaskData.buddyName,
             buddyAvatar: activeTaskData.buddyAvatar ?? activeTaskData.buddyName?.[0],
             status: activeTaskData.status,
             agentSessionId: activeTaskData.agentSessionId,
           });
-          setSelectedTaskId(activeTaskData.id);
+          taskS.setSelectedTaskId(activeTaskData.id);
           loadProducts(id);
-          // running task 时自动连接 SSE 流恢复实时进度
           if (activeTaskData.status === "running") {
             connectToTaskStream(activeTaskData.id);
           }
         } else if (tasks.length > 0) {
-          // 默认选中第一个任务
-          setSelectedTaskId(tasks[0].id);
+          taskS.setSelectedTaskId(tasks[0].id);
           loadProducts(id);
         }
       }
     } catch (error) {
       console.error("Failed to load conversation:", error);
     }
-  }, [activeWorkspaceId, conversationId]);
+  }, []);
 
-  // 共享 SSE 事件处理：handleSendMessage 和 connectToTaskStream 共用
+  // Shared SSE event handler
   const handleSseEvent = useCallback((event: any, assistantMessageId: string) => {
+    const chat = useChatStore.getState();
+    const task = useTaskStore.getState();
+
     if (event.type === "task_started") {
-      setActiveTask({
+      task.setActiveTask({
         taskId: event.taskId,
         buddyName: event.buddyName,
         buddyAvatar: event.buddyAvatar ?? event.buddyName?.[0],
@@ -257,12 +259,10 @@ export default function Home() {
         toolStatus: undefined,
         agentSessionId: event.agentSessionId,
       });
-      setWorkspaceTasks((prev) => {
+      task.updateWorkspaceTasks((prev) => {
         const exists = prev.some((t) => t.id === event.taskId);
         if (exists) {
-          return prev.map((t) =>
-            t.id === event.taskId ? { ...t, status: "running" } : t
-          );
+          return prev.map((t) => t.id === event.taskId ? { ...t, status: "running" } : t);
         }
         return [...prev, {
           id: event.taskId,
@@ -272,60 +272,29 @@ export default function Home() {
           createdAt: new Date().toISOString(),
         }];
       });
-      setSelectedTaskId(event.taskId);
+      task.setSelectedTaskId(event.taskId);
     }
 
     if (event.type === "task_completed") {
-      setActiveTask((prev) =>
-        prev ? { ...prev, status: "completed" } : undefined
-      );
-      setWorkspaceTasks((prev) =>
-        prev.map((t) =>
-          t.id === event.taskId ? { ...t, status: "completed" } : t
-        )
-      );
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.taskId === event.taskId && p.status === "generating"
-            ? { ...p, status: "completed" }
-            : p
-        )
-      );
-      setTimeout(() => setActiveTask(undefined), 500);
+      task.updateActiveTask((prev) => prev ? { ...prev, status: "completed" } : undefined);
+      task.updateWorkspaceTasks((prev) => prev.map((t) => t.id === event.taskId ? { ...t, status: "completed" } : t));
+      chat.updateProducts((prev) => prev.map((p) => p.taskId === event.taskId && p.status === "generating" ? { ...p, status: "completed" } : p));
+      setTimeout(() => useTaskStore.getState().setActiveTask(undefined), 500);
     }
 
     if (event.type === "task_failed") {
-      setActiveTask((prev) =>
-        prev ? { ...prev, status: "failed" } : undefined
-      );
-      setWorkspaceTasks((prev) =>
-        prev.map((t) =>
-          t.id === event.taskId ? { ...t, status: "failed" } : t
-        )
-      );
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.isStreaming || m.toolStatus
-            ? { ...m, isStreaming: false, toolStatus: undefined, content: m.content || "任务已停止" }
-            : m
-        )
-      );
+      task.updateActiveTask((prev) => prev ? { ...prev, status: "failed" } : undefined);
+      task.updateWorkspaceTasks((prev) => prev.map((t) => t.id === event.taskId ? { ...t, status: "failed" } : t));
+      chat.updateMessages((prev) => prev.map((m) => m.isStreaming || m.toolStatus ? { ...m, isStreaming: false, toolStatus: undefined, content: m.content || "任务已停止" } : m));
     }
 
     if (event.type === "tool_use") {
       const label = TOOL_LABELS[event.toolName] || `正在使用 ${event.toolName}...`;
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId ? { ...m, toolStatus: label } : m
-        )
-      );
-      setActiveTask((prev) =>
-        prev ? { ...prev, toolStatus: label } : prev
-      );
+      chat.updateMessages((prev) => prev.map((m) => m.id === assistantMessageId ? { ...m, toolStatus: label } : m));
+      task.updateActiveTask((prev) => prev ? { ...prev, toolStatus: label } : prev);
     }
 
     if (event.type === "text_delta") {
-      // 累积 delta，用 rAF 合并更新，每帧最多一次 setMessages
       pendingDeltasRef.current.set(
         assistantMessageId,
         (pendingDeltasRef.current.get(assistantMessageId) ?? "") + event.text
@@ -336,108 +305,64 @@ export default function Home() {
           pendingDeltasRef.current.clear();
           streamingRafRef.current = 0;
           deltas.forEach((deltaText, msgId) => {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === msgId
-                  ? { ...m, content: m.content + deltaText, toolStatus: undefined }
-                  : m
-              )
-            );
+            useChatStore.getState().updateMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, content: m.content + deltaText, toolStatus: undefined } : m));
           });
         });
       }
     }
 
     if (event.type === "complete") {
-      // Flush remaining deltas before marking complete
       cancelAnimationFrame(streamingRafRef.current);
       streamingRafRef.current = 0;
       const remainingDeltas = new Map(pendingDeltasRef.current);
       pendingDeltasRef.current.clear();
       remainingDeltas.forEach((deltaText, msgId) => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === msgId
-              ? { ...m, content: m.content + deltaText }
-              : m
-          )
-        );
+        useChatStore.getState().updateMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, content: m.content + deltaText } : m));
       });
-      setConversationId(event.conversationId);
+      useChatStore.getState().setConversationId(event.conversationId);
       if (event.agentSessionId) {
-        setActiveTask((prev) =>
-          prev ? { ...prev, agentSessionId: event.agentSessionId } : prev
-        );
+        useTaskStore.getState().updateActiveTask((prev) => prev ? { ...prev, agentSessionId: event.agentSessionId } : prev);
       }
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId
-            ? { ...m, isStreaming: false, toolStatus: undefined }
-            : m
-        )
-      );
+      useChatStore.getState().updateMessages((prev) => prev.map((m) => m.id === assistantMessageId ? { ...m, isStreaming: false, toolStatus: undefined } : m));
       return "done";
     }
 
     if (event.type === "product_created") {
-      setProducts((prev) => [
-        ...prev,
-        {
-          id: event.productId,
-          name: event.name,
-          type: event.productType,
-          taskId: event.taskId,
-          status: event.status ?? "generating",
-        } as Product,
-      ]);
+      chat.updateProducts((prev) => [...prev, {
+        id: event.productId,
+        name: event.name,
+        type: event.productType,
+        taskId: event.taskId,
+        status: event.status ?? "generating",
+      } as Product]);
     }
 
     if (event.type === "ask_user") {
       accumulatedAnswersRef.current = {};
       totalQuestionsRef.current = event.questions?.length ?? 0;
-      setPendingQuestion({ questions: event.questions });
+      chat.setPendingQuestion({ questions: event.questions });
     }
 
     if (event.type === "error") {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId
-            ? { ...m, isStreaming: false, toolStatus: undefined, content: `错误: ${event.message}` }
-            : m
-        )
-      );
+      chat.updateMessages((prev) => prev.map((m) => m.id === assistantMessageId ? { ...m, isStreaming: false, toolStatus: undefined, content: `错误: ${event.message}` } : m));
     }
 
     return "continue";
   }, []);
 
-  // SSE 重连：重入有 running task 的工作区时，连接 /stream 恢复实时进度
   const connectToTaskStream = useCallback(async (taskId: string) => {
-    setIsLoading(true);
+    const chat = useChatStore.getState();
+    chat.setIsLoading(true);
     let isSseDone = false;
     const assistantMessageId = nanoid();
-
-    setMessages((prev) => [
-      ...prev,
-      { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." },
-    ]);
+    chat.updateMessages((prev) => [...prev, { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." }]);
 
     try {
       const response = await fetch(`/api/tasks/${taskId}/stream`);
       if (!response.ok) {
-        // /stream 返回错误（task 不在 activeTasks 或状态非 running）
-        // 标记 task 为 failed，提示用户重试
-        setActiveTask((prev) =>
-          prev ? { ...prev, status: "failed" } : undefined
-        );
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId
-              ? { ...m, isStreaming: false, toolStatus: undefined, content: "任务连接已断开，请点击重试" }
-              : m
-          )
-        );
-        setIsLoading(false);
+        useTaskStore.getState().updateActiveTask((prev) => prev ? { ...prev, status: "failed" } : undefined);
+        useChatStore.getState().updateMessages((prev) => prev.map((m) => m.id === assistantMessageId ? { ...m, isStreaming: false, toolStatus: undefined, content: "任务连接已断开，请点击重试" } : m));
+        useChatStore.getState().setIsLoading(false);
         return;
       }
 
@@ -449,92 +374,53 @@ export default function Home() {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
           sseBuffer += decoder.decode(value, { stream: true });
           const parts = sseBuffer.split("\n\n");
           sseBuffer = parts.pop()!;
-
           for (const part of parts) {
             for (const line of part.split("\n")) {
               if (!line.startsWith("data: ")) continue;
               try {
                 const event = JSON.parse(line.slice(6));
-
-                // 重连快照：恢复累积文本 + 工具状态 + 产物
                 if (event.type === "reconnect_snapshot") {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMessageId
-                        ? {
-                            ...m,
-                            content: event.fullText || "",
-                            toolStatus: event.toolStatus,
-                            isStreaming: true,
-                          }
-                        : m
-                    )
-                  );
+                  useChatStore.getState().updateMessages((prev) => prev.map((m) => m.id === assistantMessageId ? { ...m, content: event.fullText || "", toolStatus: event.toolStatus, isStreaming: true } : m));
                   if (event.products?.length > 0) {
-                    setProducts((prev) => {
+                    useChatStore.getState().updateProducts((prev) => {
                       const existingIds = new Set(prev.map((p) => p.id));
-                      const newProducts = event.products
-                        .filter((p: any) => !existingIds.has(p.id))
-                        .map((p: any) => ({
-                          id: p.id,
-                          name: p.name,
-                          type: p.type,
-                          taskId,
-                          status: "completed" as const,
-                        }));
+                      const newProducts = event.products.filter((p: any) => !existingIds.has(p.id)).map((p: any) => ({ id: p.id, name: p.name, type: p.type, taskId, status: "completed" as const }));
                       return [...prev, ...newProducts];
                     });
                   }
                   continue;
                 }
-
                 const result = handleSseEvent(event, assistantMessageId);
-                if (result === "done") {
-                  isSseDone = true;
-                }
-              } catch {
-                // JSON 解析失败，跳过
-              }
+                if (result === "done") isSseDone = true;
+              } catch {}
             }
           }
         }
       }
     } catch (error) {
       console.error("Stream reconnect error:", error);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId
-            ? { ...m, isStreaming: false, toolStatus: undefined, content: `重连失败: ${error instanceof Error ? error.message : "未知错误"}` }
-            : m
-        )
-      );
+      useChatStore.getState().updateMessages((prev) => prev.map((m) => m.id === assistantMessageId ? { ...m, isStreaming: false, toolStatus: undefined, content: `重连失败: ${error instanceof Error ? error.message : "未知错误"}` } : m));
     } finally {
-      if (isSseDone) {
-        setIsLoading(false);
-      }
+      if (isSseDone) useChatStore.getState().setIsLoading(false);
     }
   }, [handleSseEvent]);
 
   const handleSendMessage = useCallback(async (content: string, resumeSessionId?: string, isRetry?: boolean) => {
-    if (!activeWorkspaceId) return;
+    const ws = useWorkspaceStore.getState();
+    const chat = useChatStore.getState();
+    const task = useTaskStore.getState();
 
+    if (!ws.activeWorkspaceId) return;
     if (!isRetry) {
-      const userMessage: Message = {
-        id: nanoid(),
-        role: "user",
-        content,
-      };
-      setMessages((prev) => [...prev, userMessage]);
+      chat.updateMessages((prev) => [...prev, { id: nanoid(), role: "user", content }]);
     }
 
-    // 如果没有 activeTask，先尝试意图识别
-    let taskId = activeTask?.taskId;
+    let taskId = task.activeTask?.taskId;
     let buddyId: string | undefined;
-    let agentSessionId = resumeSessionId ?? activeTask?.agentSessionId;
+    let agentSessionId = resumeSessionId ?? task.activeTask?.agentSessionId;
 
     if (!taskId && !isRetry) {
       try {
@@ -547,18 +433,14 @@ export default function Home() {
           const intentData = await intentRes.json();
           if (intentData.needsBuddy && intentData.buddyIds?.length > 0) {
             buddyId = intentData.buddyIds[0];
-
-            // 自动创建 task
             const taskRes = await fetch("/api/tasks", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ workspaceId: activeWorkspaceId, buddyId }),
+              body: JSON.stringify({ workspaceId: ws.activeWorkspaceId, buddyId }),
             });
             if (taskRes.ok) {
               const taskData = await taskRes.json();
               const newTaskId = taskData.task.id;
-
-              // 获取 buddy 信息
               const buddyRes = await fetch("/api/buddies");
               let buddyName: string | undefined;
               let buddyAvatar: string | undefined;
@@ -568,125 +450,68 @@ export default function Home() {
                 buddyName = buddy?.name;
                 buddyAvatar = buddy?.avatar ?? buddy?.name?.[0];
               }
-
               taskId = newTaskId;
-              setActiveTask({
-                taskId: newTaskId,
-                buddyName,
-                buddyAvatar,
-                status: "pending",
-                agentSessionId: undefined,
-              });
-              setWorkspaceTasks((prev) => [
-                ...prev,
-                {
-                  id: newTaskId,
-                  buddyName,
-                  buddyAvatar,
-                  status: "pending",
-                  createdAt: new Date().toISOString(),
-                },
-              ]);
-              setSelectedTaskId(newTaskId);
+              const taskS = useTaskStore.getState();
+              taskS.setActiveTask({ taskId: newTaskId, buddyName, buddyAvatar, status: "pending", agentSessionId: undefined });
+              taskS.updateWorkspaceTasks((prev) => [...prev, { id: newTaskId, buddyName, buddyAvatar, status: "pending", createdAt: new Date().toISOString() }]);
+              taskS.setSelectedTaskId(newTaskId);
             }
           }
         }
       } catch (error) {
         console.error("Intent recognition failed:", error);
-        // 意图识别失败，继续作为普通对话
       }
     }
 
-    setIsLoading(true);
-    let assistantMessageId = nanoid();
+    useChatStore.getState().setIsLoading(true);
+    const assistantMessageId = nanoid();
     let isSseDone = false;
-    setMessages((prev) => [
-      ...prev,
-      { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." },
-    ]);
+    useChatStore.getState().updateMessages((prev) => [...prev, { id: assistantMessageId, role: "assistant", content: "", isStreaming: true, toolStatus: "思考中..." }]);
 
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: content,
-          conversationId,
-          workspaceId: activeWorkspaceId,
-          taskId,
-          buddyId,
-          agentSessionId,
-        }),
+        body: JSON.stringify({ prompt: content, conversationId: useChatStore.getState().conversationId, workspaceId: ws.activeWorkspaceId, taskId, buddyId, agentSessionId }),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let sseBuffer = "";
-
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
           sseBuffer += decoder.decode(value, { stream: true });
           const parts = sseBuffer.split("\n\n");
           sseBuffer = parts.pop()!;
-
           for (const part of parts) {
             for (const line of part.split("\n")) {
               if (!line.startsWith("data: ")) continue;
               try {
                 const event = JSON.parse(line.slice(6));
                 const result = handleSseEvent(event, assistantMessageId);
-                if (result === "done") {
-                  isSseDone = true;
-                }
-              } catch {
-                // JSON 解析失败，跳过
-              }
+                if (result === "done") isSseDone = true;
+              } catch {}
             }
           }
         }
       }
     } catch (error) {
       console.error("Chat error:", error);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId
-            ? { ...m, isStreaming: false, toolStatus: undefined, content: `请求失败: ${error instanceof Error ? error.message : "未知错误"}` }
-            : m
-        )
-      );
+      useChatStore.getState().updateMessages((prev) => prev.map((m) => m.id === assistantMessageId ? { ...m, isStreaming: false, toolStatus: undefined, content: `请求失败: ${error instanceof Error ? error.message : "未知错误"}` } : m));
     } finally {
-      if (isSseDone) {
-        setIsLoading(false);
-      }
+      if (isSseDone) useChatStore.getState().setIsLoading(false);
     }
-  }, [activeWorkspaceId, conversationId, activeTask, handleSseEvent]);
+  }, [handleSseEvent]);
 
   const handleStopTask = useCallback(async (taskId: string) => {
     try {
       await fetch(`/api/tasks/${taskId}/stop`, { method: "POST" });
-      setActiveTask((prev) =>
-        prev ? { ...prev, status: "failed" } : undefined
-      );
-      setIsLoading(false);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.isStreaming || m.toolStatus
-            ? {
-                ...m,
-                isStreaming: false,
-                toolStatus: undefined,
-                content: m.content || "任务已停止",
-              }
-            : m
-        )
-      );
+      useTaskStore.getState().updateActiveTask((prev) => prev ? { ...prev, status: "failed" } : undefined);
+      useChatStore.getState().setIsLoading(false);
+      useChatStore.getState().updateMessages((prev) => prev.map((m) => m.isStreaming || m.toolStatus ? { ...m, isStreaming: false, toolStatus: undefined, content: m.content || "任务已停止" } : m));
     } catch (error) {
       console.error("Stop task error:", error);
     }
@@ -697,70 +522,55 @@ export default function Home() {
       const res = await fetch(`/api/tasks/${taskId}/retry`, { method: "POST" });
       if (res.ok) {
         const { task: updatedTask } = await res.json();
-        setActiveTask((prev) =>
-          prev ? { ...prev, status: "pending", toolStatus: undefined, agentSessionId: updatedTask?.agentSessionId } : undefined
-        );
-        const originalPrompt = messages.find((m) => m.role === "user")?.content ?? "继续执行";
+        useTaskStore.getState().updateActiveTask((prev) => prev ? { ...prev, status: "pending", toolStatus: undefined, agentSessionId: updatedTask?.agentSessionId } : undefined);
+        const originalPrompt = useChatStore.getState().messages.find((m) => m.role === "user")?.content ?? "继续执行";
         handleSendMessage(originalPrompt, updatedTask?.agentSessionId, true);
       }
     } catch (error) {
       console.error("Retry task error:", error);
     }
-  }, [messages, handleSendMessage]);
+  }, [handleSendMessage]);
 
   const handleProductClick = useCallback((product: { id: string; name: string }) => {
     setPreviewProduct(product as Product);
   }, []);
 
-  const loadProducts = useCallback(async (workspaceId: string) => {
-    try {
-      const res = await fetch(`/api/products?workspaceId=${workspaceId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(data.products ?? []);
-      }
-    } catch (error) {
-      console.error("Failed to load products:", error);
-    }
-  }, []);
-
   const handleTaskSelect = useCallback((taskId: string) => {
-    setSelectedTaskId(taskId);
-    if (activeWorkspaceId) loadProducts(activeWorkspaceId);
-  }, [activeWorkspaceId, loadProducts]);
+    useTaskStore.getState().setSelectedTaskId(taskId);
+    const wsId = useWorkspaceStore.getState().activeWorkspaceId;
+    if (wsId) loadProducts(wsId);
+  }, [loadProducts]);
 
   const handleDeleteWorkspace = useCallback(async (workspaceId: string) => {
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}`, { method: "DELETE" });
       if (res.ok) {
-        setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId));
-        if (activeWorkspaceId === workspaceId) {
-          setActiveWorkspaceId(null);
-          setActiveView("home");
-          setMessages([]);
-          setProducts([]);
-          setActiveTask(undefined);
-          setWorkspaceTasks([]);
-          setSelectedTaskId(undefined);
+        const ws = useWorkspaceStore.getState();
+        const chat = useChatStore.getState();
+        const task = useTaskStore.getState();
+        ws.removeWorkspace(workspaceId);
+        useHomeStore.getState().invalidate();
+        if (ws.activeWorkspaceId === workspaceId) {
+          ws.setActiveWorkspaceId(null);
+          ws.setActiveView("home");
+          chat.setMessages([]);
+          chat.setProducts([]);
+          task.setActiveTask(undefined);
+          task.setWorkspaceTasks([]);
+          task.setSelectedTaskId(undefined);
         }
       }
     } catch (error) {
       console.error("Delete workspace error:", error);
     }
     setDeleteWorkspaceId(undefined);
-  }, [activeWorkspaceId]);
-
-  const handleHomeSelect = useCallback(() => setActiveView("home"), []);
-  const handleWorkspaceCreateDialog = useCallback(() => setCreateDialogOpen(true), []);
-  const handleWorkspaceDeleteDialog = useCallback((id: string) => setDeleteWorkspaceId(id), []);
-  const handleSidebarToggle = useCallback(() => setSidebarCollapsed((v) => !v), []);
-  const handleRightBarToggle = useCallback(() => setRightBarCollapsed((v) => !v), []);
+  }, []);
 
   const handleProductDelete = useCallback(async (productId: string) => {
     try {
       const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
       if (res.ok) {
-        setProducts((prev) => prev.filter((p) => p.id !== productId));
+        useChatStore.getState().updateProducts((prev) => prev.filter((p) => p.id !== productId));
       }
     } catch (error) {
       console.error("Delete product error:", error);
@@ -768,34 +578,33 @@ export default function Home() {
   }, []);
 
   const handleQuestionAnswered = useCallback((questionIndex: number, answers: string[]) => {
-    if (!activeTask?.taskId) return;
-    const q = pendingQuestion?.questions[questionIndex];
+    const task = useTaskStore.getState();
+    const chat = useChatStore.getState();
+    if (!task.activeTask?.taskId) return;
+    const q = chat.pendingQuestion?.questions[questionIndex];
     if (q) {
       accumulatedAnswersRef.current[q.question] = answers.join(", ");
     }
-    setMessages((prev) => [...prev, { id: nanoid(), role: "user", content: answers.join(", ") }]);
-
+    chat.updateMessages((prev) => [...prev, { id: nanoid(), role: "user", content: answers.join(", ") }]);
     const totalQuestions = totalQuestionsRef.current;
     const answeredCount = Object.keys(accumulatedAnswersRef.current).length;
-
     if (answeredCount < totalQuestions) {
-      setPendingQuestion((prev) => {
+      useChatStore.getState().updatePendingQuestion((prev) => {
         if (!prev) return undefined;
-        const remaining = prev.questions.filter((_, i) => i !== questionIndex);
+        const remaining = prev.questions.filter((_, i: number) => i !== questionIndex);
         return remaining.length > 0 ? { ...prev, questions: remaining } : undefined;
       });
       return;
     }
-
     const allAnswers = { ...accumulatedAnswersRef.current };
     accumulatedAnswersRef.current = {};
-    setPendingQuestion(undefined);
-    fetch(`/api/tasks/${activeTask.taskId}/answer`, {
+    useChatStore.getState().setPendingQuestion(undefined);
+    fetch(`/api/tasks/${useTaskStore.getState().activeTask!.taskId}/answer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers: allAnswers, conversationId }),
+      body: JSON.stringify({ answers: allAnswers, conversationId: useChatStore.getState().conversationId }),
     }).catch((error) => console.error("Answer injection failed:", error));
-  }, [activeTask, pendingQuestion, conversationId]);
+  }, []);
 
   if (isLoadingAuth) {
     return (
@@ -811,53 +620,44 @@ export default function Home() {
   return (
     <main className="h-screen flex p-3 gap-3 bg-background">
       <Sidebar
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        activeView={activeView}
+        workspaces={wsStore.workspaces}
+        activeWorkspaceId={wsStore.activeWorkspaceId}
+        activeView={wsStore.activeView}
         onWorkspaceSelect={handleSelectWorkspace}
         onHomeSelect={handleHomeSelect}
         onWorkspaceCreate={handleWorkspaceCreateDialog}
         onWorkspaceDelete={handleWorkspaceDeleteDialog}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={handleSidebarToggle}
+        collapsed={wsStore.sidebarCollapsed}
+        onToggleCollapse={wsStore.toggleSidebar}
       />
 
-      {activeView === "home" ? (
+      {wsStore.activeView === "home" ? (
         <HomePage
           onSelectBuddy={handleCreateWorkspaceWithBuddy}
-          onTaskClick={(workspaceId) => handleSelectWorkspace(workspaceId)}
+          onTaskClick={handleSelectWorkspace}
         />
       ) : (
         <>
           <ChatArea
-            messages={messages}
+            messages={chatStore.messages}
             onSendMessage={handleSendMessage}
-            isLoading={isLoading}
+            isLoading={chatStore.isLoading}
             className="flex-1 min-w-0"
-            activeTask={activeTask}
+            activeTask={taskStore.activeTask}
             onStopTask={handleStopTask}
             onRetryTask={handleRetryTask}
-            pendingQuestion={pendingQuestion}
+            pendingQuestion={chatStore.pendingQuestion}
             onQuestionAnswered={handleQuestionAnswered}
           />
           <RightBar
-            tasks={workspaceTasks}
-            selectedTaskId={selectedTaskId}
+            tasks={taskStore.workspaceTasks}
+            selectedTaskId={taskStore.selectedTaskId}
             onTaskSelect={handleTaskSelect}
-            products={products}
+            products={chatStore.products}
             onProductClick={handleProductClick}
-            onProductDelete={async (productId: string) => {
-              try {
-                const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
-                if (res.ok) {
-                  setProducts((prev) => prev.filter((p) => p.id !== productId));
-                }
-              } catch (error) {
-                console.error("Delete product error:", error);
-              }
-            }}
-            collapsed={rightBarCollapsed}
-            onToggleCollapse={handleRightBarToggle}
+            onProductDelete={handleProductDelete}
+            collapsed={chatStore.rightBarCollapsed}
+            onToggleCollapse={chatStore.toggleRightBar}
           />
         </>
       )}
@@ -871,20 +671,14 @@ export default function Home() {
             type="text"
             value={newWorkspaceName}
             onChange={(e) => setNewWorkspaceName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreateWorkspace();
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreateWorkspace(); }}
             placeholder="输入工作区名称"
             className="w-full px-3 py-2 rounded-lg border border-border bg-secondary text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             autoFocus
           />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setCreateDialogOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={handleCreateWorkspace} disabled={!newWorkspaceName.trim()}>
-              创建
-            </Button>
+            <Button variant="ghost" onClick={() => setCreateDialogOpen(false)}>取消</Button>
+            <Button onClick={handleCreateWorkspace} disabled={!newWorkspaceName.trim()}>创建</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -913,18 +707,11 @@ export default function Home() {
             <DialogTitle>删除工作区</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            确定要删除此工作区吗？工作区内的所有任务、对话和产物将被永久删除，此操作不可撤销。
+            定要删除此工作区吗？工作区内的所有任务、对话和产物将被永久删除，此操作不可撤销。
           </p>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteWorkspaceId(undefined)}>
-              取消
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteWorkspaceId && handleDeleteWorkspace(deleteWorkspaceId)}
-            >
-              删除
-            </Button>
+            <Button variant="ghost" onClick={() => setDeleteWorkspaceId(undefined)}>取消</Button>
+            <Button variant="destructive" onClick={() => deleteWorkspaceId && handleDeleteWorkspace(deleteWorkspaceId)}>删除</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
