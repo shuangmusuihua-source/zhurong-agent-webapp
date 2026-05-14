@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { SquircleContainer } from "@/components/ui/squircle-container";
 import { ChatInput } from "@/components/ui/chat-input";
@@ -70,6 +70,10 @@ export function HomePage({
     });
     return () => cancelAnimationFrame(scrollRafRef.current);
   }, [messages]);
+
+  const handleQuoteText = useCallback((text: string) => {
+    setInput(text);
+  }, []);
 
   const handleSend = async () => {
     const content = input.trim();
@@ -225,7 +229,7 @@ export function HomePage({
           {messages.length > 0 && (
             <div className="flex flex-col gap-5 mb-8">
               {messages.map((msg) => (
-                <MessageBubble key={msg.id} msg={msg as Message} />
+                <MessageBubble key={msg.id} msg={msg as Message} onQuoteText={handleQuoteText} />
               ))}
               <div ref={messagesEndRef} />
             </div>

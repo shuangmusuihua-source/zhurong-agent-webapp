@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Loader2, Search, ArrowDownToLine, StopCircle, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
-import { computePosition, flip, offset } from "@floating-ui/dom";
+import { Loader2, Search, StopCircle, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
 import { SquircleContainer } from "@/components/ui/squircle-container";
 import { ChatInput } from "@/components/ui/chat-input";
@@ -230,8 +229,6 @@ export function ChatArea({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const scrollHideRef = useScrollHide();
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const selectedTextRef = useRef("");
   const isNearBottomRef = useRef(true);
   const scrollRafRef = useRef<number>(0);
 
@@ -260,72 +257,10 @@ export function ChatArea({
     return () => cancelAnimationFrame(scrollRafRef.current);
   }, [messages]);
 
-  const showPopover = useCallback((range: Range) => {
-    const el = popoverRef.current;
-    if (!el) return;
-
-    selectedTextRef.current = window.getSelection()?.toString().trim() || "";
-
-    const rect = range.getBoundingClientRect();
-    const virtualEl = { getBoundingClientRect: () => rect };
-
-    computePosition(virtualEl, el, {
-      placement: "top",
-      middleware: [flip(), offset(8)],
-    }).then(({ x, y }) => {
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
-    });
-
-    el.style.display = "block";
-  }, []);
-
-  const hidePopover = useCallback(() => {
-    const el = popoverRef.current;
-    if (el) el.style.display = "none";
-    selectedTextRef.current = "";
-  }, []);
-
-  const handleBringToInput = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const text = selectedTextRef.current;
-    if (!text) return;
-    hidePopover();
+  const handleQuoteText = useCallback((text: string) => {
     setInput(text);
     textareaRef.current?.focus();
-    setTimeout(() => {
-      window.getSelection()?.removeAllRanges();
-    }, 200);
-  }, [hidePopover]);
-
-  useEffect(() => {
-    const onMouseUp = (e: MouseEvent) => {
-      if (popoverRef.current && popoverRef.current.contains(e.target as Node)) return;
-      const selection = window.getSelection();
-      if (!selection || selection.isCollapsed || !selection.toString().trim()) {
-        hidePopover();
-        return;
-      }
-      const range = selection.getRangeAt(0);
-      const container = messagesContainerRef.current;
-      if (!container || !container.contains(range.commonAncestorContainer)) {
-        hidePopover();
-        return;
-      }
-      showPopover(range);
-    };
-    const onMouseDown = (e: MouseEvent) => {
-      if (popoverRef.current && popoverRef.current.contains(e.target as Node)) return;
-      hidePopover();
-    };
-    document.addEventListener("mouseup", onMouseUp);
-    document.addEventListener("mousedown", onMouseDown);
-    return () => {
-      document.removeEventListener("mouseup", onMouseUp);
-      document.removeEventListener("mousedown", onMouseDown);
-    };
-  }, [showPopover, hidePopover]);
+  }, []);
 
   const handleSubmit = () => {
     if (!input.trim() || isLoading) return;
@@ -383,7 +318,7 @@ export function ChatArea({
         )}
 
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} />
+          <MessageBubble key={msg.id} msg={msg} onQuoteText={handleQuoteText} />
         ))}
         <div ref={messagesEndRef} />
       </div>
@@ -489,20 +424,6 @@ export function ChatArea({
           </div>
         </div>
       )}
-
-      <div
-        ref={popoverRef}
-        style={{ display: "none" }}
-        className="fixed z-50"
-      >
-        <button
-          onMouseDown={handleBringToInput}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-popover text-popover-foreground shadow-lg border border-border text-xs font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
-        >
-          <ArrowDownToLine className="w-3.5 h-3.5" />
-          带入对话框
-        </button>
-      </div>
     </SquircleContainer>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, Globe, Terminal, FileText, Search } from "lucide-react";
+import { Loader2, Globe, Terminal, FileText, Search, ArrowDownToLine } from "lucide-react";
+import { computePosition, flip, offset } from "@floating-ui/dom";
 import { SquircleContainer } from "@/components/ui/squircle-container";
 import type { Message } from "@/lib/types";
 
@@ -26,9 +27,87 @@ function getToolIcon(toolStatus?: string) {
   return <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />;
 }
 
-export const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: Message }) {
+interface MessageBubbleProps {
+  msg: Message;
+  onQuoteText?: (text: string) => void;
+}
+
+export const MessageBubble = React.memo(function MessageBubble({ msg, onQuoteText }: MessageBubbleProps) {
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const selectedTextRef = useRef("");
+
+  const showPopover = useCallback((range: Range) => {
+    const el = popoverRef.current;
+    if (!el) return;
+
+    selectedTextRef.current = window.getSelection()?.toString().trim() || "";
+
+    const rect = range.getBoundingClientRect();
+    const virtualEl = { getBoundingClientRect: () => rect };
+
+    computePosition(virtualEl, el, {
+      placement: "top",
+      middleware: [flip(), offset(8)],
+    }).then(({ x, y }) => {
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+    });
+
+    el.style.display = "block";
+  }, []);
+
+  const hidePopover = useCallback(() => {
+    const el = popoverRef.current;
+    if (el) el.style.display = "none";
+    selectedTextRef.current = "";
+  }, []);
+
+  const handleBringToInput = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = selectedTextRef.current;
+    if (!text) return;
+    hidePopover();
+    onQuoteText?.(text);
+    setTimeout(() => {
+      window.getSelection()?.removeAllRanges();
+    }, 200);
+  }, [hidePopover, onQuoteText]);
+
+  useEffect(() => {
+    if (!onQuoteText) return;
+
+    const onMouseUp = (e: MouseEvent) => {
+      if (popoverRef.current && popoverRef.current.contains(e.target as Node)) return;
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+        hidePopover();
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      const bubble = bubbleRef.current;
+      if (!bubble || !bubble.contains(range.commonAncestorContainer)) {
+        hidePopover();
+        return;
+      }
+      showPopover(range);
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      if (popoverRef.current && popoverRef.current.contains(e.target as Node)) return;
+      hidePopover();
+    };
+    document.addEventListener("mouseup", onMouseUp);
+    document.addEventListener("mousedown", onMouseDown);
+    return () => {
+      document.removeEventListener("mouseup", onMouseUp);
+      document.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [onQuoteText, showPopover, hidePopover]);
+
   return (
     <div
+      ref={bubbleRef}
       className={`flex gap-3 max-w-[720px] ${
         msg.role === "user" ? "self-end flex-row-reverse items-start" : ""
       }`}
@@ -70,6 +149,22 @@ export const MessageBubble = React.memo(function MessageBubble({ msg }: { msg: M
           </SquircleContainer>
         ) : null}
       </div>
+
+      {onQuoteText && (
+        <div
+          ref={popoverRef}
+          style={{ display: "none" }}
+          className="fixed z-50"
+        >
+          <button
+            onMouseDown={handleBringToInput}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-popover text-popover-foreground shadow-lg border border-border text-xs font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
+          >
+            <ArrowDownToLine className="w-3.5 h-3.5" />
+            带入对话框
+          </button>
+        </div>
+      )}
     </div>
   );
 });
