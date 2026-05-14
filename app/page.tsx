@@ -673,7 +673,6 @@ export default function Home() {
       {wsStore.activeView === "home" ? (
         <HomePage
           onSelectBuddy={handleCreateWorkspaceWithBuddy}
-          onTaskClick={handleSelectWorkspace}
         />
       ) : (
         <>
