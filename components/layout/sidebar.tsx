@@ -55,7 +55,7 @@ export function Sidebar({
   return (
     <SquircleContainer
       cornerRadius={16}
-      className={`flex flex-col bg-sidebar-bg overflow-hidden transition-all duration-300 relative ${
+      className={`flex flex-col bg-sidebar-bg overflow-hidden transition-[width] duration-300 will-change-transform relative ${
         collapsed ? "w-[60px]" : "w-[240px]"
       }`}
     >

@@ -175,6 +175,7 @@ code, pre, .font-mono {
 .overflow-auto {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
+  contain: content layout paint;
 }
 .overflow-y-auto.is-scrolling,
 .overflow-auto.is-scrolling {
