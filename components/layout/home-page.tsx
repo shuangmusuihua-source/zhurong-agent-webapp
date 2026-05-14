@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Loader2, ArrowUp } from "lucide-react";
 import { SquircleContainer } from "@/components/ui/squircle-container";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
+import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import type { DigitalBuddy, Task } from "@/lib/types";
 import { nanoid } from "nanoid";
 
@@ -28,7 +29,10 @@ export function HomePage({
   const [recommendedBuddies, setRecommendedBuddies] = useState<DigitalBuddy[]>([]);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { textareaRef, resize: resizeTextarea } = useAutoResizeTextarea();
   const scrollRef = useScrollHide();
+  const isNearBottomRef = useRef(true);
+  const scrollRafRef = useRef<number>(0);
 
   useEffect(() => {
     async function loadData() {
@@ -55,7 +59,25 @@ export function HomePage({
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollRef.current;
+    if (!container) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
+    };
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!isNearBottomRef.current) return;
+    cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(scrollRafRef.current);
   }, [messages]);
 
   const handleSend = async () => {
@@ -260,11 +282,11 @@ export function HomePage({
 
       <SquircleContainer cornerRadius={16} className="mx-auto w-[60%] flex items-center gap-2 backdrop-blur-xl bg-white/80 dark:bg-chat-bg/70 px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all">
         <textarea
+            ref={textareaRef}
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
-            e.target.style.height = "auto";
-            e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+            resizeTextarea();
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {

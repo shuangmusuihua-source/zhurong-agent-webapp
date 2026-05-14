@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Loader2, Globe, Terminal, FileText, Search, ArrowUp, ArrowDownToLine, Square, RotateCcw, Check, ChevronUp, ChevronDown, X } from "lucide-react";
 import { computePosition, flip, offset } from "@floating-ui/dom";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
+import { useAutoResizeTextarea } from "@/hooks/use-auto-resize-textarea";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { SquircleContainer } from "@/components/ui/squircle-container";
 import type { Message, TaskStatus } from "@/lib/types";
@@ -286,14 +287,38 @@ export function ChatArea({
 }) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { textareaRef, resize: resizeTextarea } = useAutoResizeTextarea();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const scrollHideRef = useScrollHide();
   const popoverRef = useRef<HTMLDivElement>(null);
   const selectedTextRef = useRef("");
+  const isNearBottomRef = useRef(true);
+  const scrollRafRef = useRef<number>(0);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    // Measure initial position (handles loaded conversations)
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
+    };
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!isNearBottomRef.current) return;
+    cancelAnimationFrame(scrollRafRef.current);
+    const isStreaming = messages.some(m => m.isStreaming);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isStreaming ? "auto" : "smooth",
+      });
+    });
+    return () => cancelAnimationFrame(scrollRafRef.current);
   }, [messages]);
 
   const showPopover = useCallback((range: Range) => {
@@ -367,9 +392,7 @@ export function ChatArea({
     if (!input.trim() || isLoading) return;
     onSendMessage(input.trim());
     setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    resizeTextarea();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -381,8 +404,7 @@ export function ChatArea({
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    e.target.style.height = "auto";
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+    resizeTextarea();
   };
 
   const isTaskRunning = activeTask?.status === "running";
