@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { SquircleContainer } from "@/components/ui/squircle-container";
 import { ChatInput } from "@/components/ui/chat-input";
+import { MessageBubble } from "@/components/ui/message-bubble";
 import { useScrollHide } from "@/hooks/use-scroll-hide";
 import { useHomeStore } from "@/stores/home-store";
-import type { DigitalBuddy, Task } from "@/lib/types";
+import type { DigitalBuddy, Message } from "@/lib/types";
 import { nanoid } from "nanoid";
 
 interface HomeMessage {
@@ -17,10 +18,8 @@ interface HomeMessage {
 
 export function HomePage({
   onSelectBuddy,
-  onTaskClick,
 }: {
   onSelectBuddy: (buddy: DigitalBuddy) => void;
-  onTaskClick?: (workspaceId: string) => void;
 }) {
   const homeStore = useHomeStore();
   const [messages, setMessages] = useState<HomeMessage[]>([]);
@@ -36,18 +35,11 @@ export function HomePage({
     if (homeStore.loaded) return;
     async function loadData() {
       try {
-        const [buddiesRes, tasksRes] = await Promise.all([
-          fetch("/api/buddies"),
-          fetch("/api/tasks?recent=true"),
-        ]);
+        const buddiesRes = await fetch("/api/buddies");
         const store = useHomeStore.getState();
         if (buddiesRes.ok) {
           const data = await buddiesRes.json();
           store.setBuddies(data.buddies);
-        }
-        if (tasksRes.ok) {
-          const data = await tasksRes.json();
-          store.setRecentTasks(data.tasks || []);
         }
         store.setLoaded(true);
       } catch (error) {
@@ -231,52 +223,15 @@ export function HomePage({
           )}
 
           {messages.length > 0 && (
-            <div className="space-y-4 mb-8">
+            <div className="flex flex-col gap-5 mb-8">
               {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-foreground"
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
-                </div>
+                <MessageBubble key={msg.id} msg={msg as Message} />
               ))}
               <div ref={messagesEndRef} />
             </div>
           )}
 
-          {homeStore.recentTasks.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold mb-3">最近任务</h2>
-              <div className="flex flex-col gap-2">
-                {homeStore.recentTasks.map((task) => (
-                  <button
-                    key={task.id}
-                    onClick={() => onTaskClick?.(task.workspaceId)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 transition-colors text-left w-full"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">
-                      {task.buddyAvatar ?? task.buddyName?.[0] ?? "?"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{task.buddyName ?? "伙伴"}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {task.status === "running" ? "执行中" : task.status === "completed" ? "已完成" : task.status === "pending" ? "等待中" : "失败"}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+                  </div>
       </div>
 
       <ChatInput
